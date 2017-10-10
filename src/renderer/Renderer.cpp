@@ -40,10 +40,10 @@ void Renderer::initialize(SDL_Window* window, int screen_width, int screen_heigh
         shadow_map_shader = AssetManager::get_shader("pass_vert.glsl","empty_frag.glsl");
 
         shadow_map_shader->use();
-        shadow_map_shader->init_uniform("model"       , Shader::Uniform_Type::Mat4);
-        shadow_map_shader->init_uniform("color"       , Shader::Uniform_Type::Vec4); //because it is using _render_scene
+        shadow_map_shader->init_uniform("model"        , Shader::Uniform_Type::Mat4);
+        shadow_map_shader->init_uniform("color"        , Shader::Uniform_Type::Vec4); //because it is using _render_scene
         shadow_map_shader->init_uniform("shadow_index" , Shader::Uniform_Type::Int); //note used
-        shadow_map_shader->init_uniform("vp"   , Shader::Uniform_Type::Mat4);
+        shadow_map_shader->init_uniform("vp"           , Shader::Uniform_Type::Mat4);
 
 
         //geometry
@@ -93,13 +93,13 @@ void Renderer::initialize(SDL_Window* window, int screen_width, int screen_heigh
         //screen
         screen_shader = AssetManager::get_shader("screen");
 
-        screen_shader->init_uniform("camera_position"    , Shader::Uniform_Type::Vec4);
-        screen_shader->init_uniform("position_texture"   , Shader::Uniform_Type::Texture);
-        screen_shader->init_uniform("normal_texture"     , Shader::Uniform_Type::Texture);
-        screen_shader->init_uniform("color_texture"      , Shader::Uniform_Type::Texture);
-        screen_shader->init_uniform("specular_texture"   , Shader::Uniform_Type::Texture);
-        screen_shader->init_uniform("shadow_map"      , Shader::Uniform_Type::Texture);
-        screen_shader->init_uniform("screen_texture"     , Shader::Uniform_Type::Texture);
+        screen_shader->init_uniform("camera_position"  , Shader::Uniform_Type::Vec4);
+        screen_shader->init_uniform("position_texture" , Shader::Uniform_Type::Texture);
+        screen_shader->init_uniform("normal_texture"   , Shader::Uniform_Type::Texture);
+        screen_shader->init_uniform("color_texture"    , Shader::Uniform_Type::Texture);
+        screen_shader->init_uniform("specular_texture" , Shader::Uniform_Type::Texture);
+        screen_shader->init_uniform("shadow_map"       , Shader::Uniform_Type::Texture);
+        screen_shader->init_uniform("screen_texture"   , Shader::Uniform_Type::Texture);
 
         screen_shader->init_uniform("fog"                , Shader::Uniform_Type::Vec4);
         screen_shader->init_uniform("time"               , Shader::Uniform_Type::Float);
