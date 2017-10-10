@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../God.hpp"
-#include "../Entity.hpp"
+#include <engine/God.hpp>
+#include <engine/Entity.hpp>
 
 class Camera{
 public:

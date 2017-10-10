@@ -1,11 +1,13 @@
 #pragma once 
 #include "glm/glm.hpp"
+
 #include "imgui/imgui_impl_sdl_gl3.hpp"
+
 #include <string>
 
-#include "Mesh.hpp"
+#include <engine/renderer/Mesh.hpp>
 
-#include "../Input.hpp"
+#include <engine/Input.hpp>
 
 class Light{
 private:

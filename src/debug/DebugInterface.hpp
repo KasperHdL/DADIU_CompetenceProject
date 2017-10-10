@@ -3,15 +3,16 @@
 #include "SDL.h"
 #include <string>
 
-#include "Timer.hpp"
-#include "../Input.hpp"
+#include <game/Game.hpp>
 
-#include "../God.hpp"
-#include "../Game.hpp"
+#include <engine/utils/Timer.hpp>
+#include <engine/Input.hpp>
 
-#include "../renderer/imgui/imgui_impl_sdl_gl3.hpp"
-#include "../renderer/Mesh.hpp"
-#include "../renderer/Light.hpp"
+#include <engine/God.hpp>
+
+#include <engine/renderer/imgui/imgui_impl_sdl_gl3.hpp>
+#include <engine/renderer/Mesh.hpp>
+#include <engine/renderer/Light.hpp>
 
 class DebugInterface{
     public:

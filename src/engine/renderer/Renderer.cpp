@@ -1,7 +1,7 @@
-#include "Renderer.hpp"
-#include "../Engine.hpp"
-#include "../utils/DebugInterface.hpp"
-#include "Camera.hpp"
+#include <engine/renderer/Renderer.hpp>
+#include <engine/Engine.hpp>
+#include <debug/DebugInterface.hpp>
+#include <engine/renderer/Camera.hpp>
 
 Renderer* Renderer::instance = nullptr;
 

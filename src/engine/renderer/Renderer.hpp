@@ -8,12 +8,12 @@
 #include <iostream>
 #include <vector>
 
-#include "../utils/FileLoader.hpp"
-#include "../utils/AssetManager.hpp"
+#include <engine/utils/FileLoader.hpp>
+#include <engine/utils/AssetManager.hpp>
 
-#include "Shader.hpp"
-#include "Mesh.hpp"
-#include "Light.hpp"
+#include <engine/renderer/Shader.hpp>
+#include <engine/renderer/Mesh.hpp>
+#include <engine/renderer/Light.hpp>
 
 class Camera;
 class Entity;

@@ -1,11 +1,12 @@
 #pragma once
 
 #include <string>
-#include "Engine.hpp"
-#include "utils/SceneLoader.hpp"
-#include "God.hpp"
 #include <vector>
-#include "Player.hpp"
+
+#include <engine/Engine.hpp>
+#include <engine/utils/SceneLoader.hpp>
+#include <engine/God.hpp>
+#include <game/Player.hpp>
 
 
 class Game{

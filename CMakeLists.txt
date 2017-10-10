@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.6)
-project(VolumetricLightDemo CXX)
+project(DADIU_CompetenceProject CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(DEBUG_MODE TRUE)
@@ -9,9 +9,11 @@ add_definitions(-DDEBUG)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
+
 #########################################################
-# FIND OPENGL
+# LIBRARIES
 #########################################################
+
 IF(APPLE)
     INCLUDE_DIRECTORIES ( /System/Library/Frameworks )
     FIND_LIBRARY(OpenGL_LIBRARY OpenGL )
@@ -39,8 +41,10 @@ find_package(SDL2_MIXER REQUIRED)
 include_directories(${SDL2_MIXER_INCLUDE_DIRS})
 
 include_directories(include)
+include_directories(src)
 
 SET(EXTRA_LIBS ${EXTRA_LIBS} ${SDL2_LIBRARY} ${SDL2_MIXER_LIBRARY} ${SDL2_IMAGE_LIBRARY})
+
 
 IF(WIN32)
     if(DEBUG_MODE)
@@ -51,6 +55,10 @@ IF(WIN32)
 ELSE(WIN32)
     SET(EXTRA_LIBS ${EXTRA_LIBS})
 ENDIF(WIN32)
+
+#########################################################
+# EXECUTABLE
+#########################################################
 
 file(GLOB_RECURSE FILES
     "src/*.cpp"

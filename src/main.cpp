@@ -1,5 +1,5 @@
-#include "Game.hpp"
-#include "Engine.hpp"
+#include <game/Game.hpp>
+#include <engine/Engine.hpp>
 
 Game game = Game();
 

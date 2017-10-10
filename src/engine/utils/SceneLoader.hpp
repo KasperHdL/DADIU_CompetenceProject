@@ -2,13 +2,13 @@
 #include <fstream>
 #include <string>
 
-#include "../God.hpp"
-#include "../renderer/Mesh.hpp"
-#include "../renderer/Camera.hpp"
-#include "../renderer/Renderer.hpp"
-#include "../renderer/Light.hpp"
+#include <engine/God.hpp>
+#include <engine/renderer/Mesh.hpp>
+#include <engine/renderer/Camera.hpp>
+#include <engine/renderer/Renderer.hpp>
+#include <engine/renderer/Light.hpp>
 
-#include "DataPath.hpp"
+#include <engine/utils/DataPath.hpp>
 
 #include "glm/glm.hpp"
 

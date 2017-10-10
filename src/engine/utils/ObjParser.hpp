@@ -3,15 +3,13 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sstream>
 
 #include <vector>
 
-#include "../renderer/Mesh.hpp"
+#include <engine/renderer/Mesh.hpp>
+#include <engine/utils/DataPath.hpp>
 
-
-#include <string>
-#include <sstream>
-#include "DataPath.hpp"
 
 
 class ObjParser{

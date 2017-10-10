@@ -6,11 +6,11 @@
 #include <iostream>
 #include <vector>
 
-#include "../renderer/Shader.hpp"
-#include "../renderer/Mesh.hpp"
-#include "../utils/ObjParser.hpp"
-#include "DynamicPool.hpp"
-#include "FileLoader.hpp"
+#include <engine/renderer/Shader.hpp>
+#include <engine/renderer/Mesh.hpp>
+#include <engine/utils/ObjParser.hpp>
+#include <engine/utils/DynamicPool.hpp>
+#include <engine/utils/FileLoader.hpp>
 
 class AssetManager{
 public: 

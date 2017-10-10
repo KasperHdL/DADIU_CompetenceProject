@@ -1,15 +1,17 @@
 #pragma once 
 
-#include "renderer/Renderer.hpp"
-
-#include "Entity.hpp"
-#include "God.hpp" 
-
-#include "renderer/Camera.hpp"
- 
 #include <string> 
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+
+#include <engine/renderer/Renderer.hpp>
+#include <engine/renderer/Camera.hpp>
+
+#include <engine/Entity.hpp>
+#include <engine/God.hpp>
+
+ 
 
 class Player{ 
     public: 

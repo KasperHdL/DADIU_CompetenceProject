@@ -13,11 +13,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 //render
-#include "renderer/Renderer.hpp"
+#include <engine/renderer/Renderer.hpp>
 
 //engine
-#include "Input.hpp"
-#include "utils/AssetManager.hpp"
+#include <engine/Input.hpp>
+#include <engine/utils/AssetManager.hpp>
 
 class Game;
 class DebugInterface;
