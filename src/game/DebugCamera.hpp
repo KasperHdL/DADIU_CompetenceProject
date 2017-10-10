@@ -13,7 +13,7 @@
 
  
 
-class Player{ 
+class DebugCamera{ 
     public: 
         Entity* entity; 
         Camera* camera;
@@ -25,9 +25,9 @@ class Player{
 
         bool freeze = false;
  
-        Player(){ 
+        DebugCamera(){ 
             entity = new (God::entities.create()) Entity();
-            entity->name = "Player";
+            entity->name = "Debug Camera";
             entity->position = vec3(10,10,10);
 
             camera = Renderer::instance->camera;
@@ -75,10 +75,9 @@ class Player{
             camera->entity->rotation = entity->rotation;
 
 
-
         }
  
-        ~Player(){ 
+        ~DebugCamera(){ 
  
         } 
  
