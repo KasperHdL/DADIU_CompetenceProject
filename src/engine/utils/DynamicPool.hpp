@@ -29,6 +29,7 @@ class DynamicPool{
         DynamicPool(){}
 
         DynamicPool(int poolCapacity, int numPoolsReserved = 1){
+            this->capacity = 0;
             this->poolCapacity = poolCapacity;
             for(int i = 0; i < numPoolsReserved; i++){
                 createPool();

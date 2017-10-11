@@ -139,6 +139,8 @@ class DebugInterface{
 
                 ImGui_ImplSdlGL3_NewFrame(window);
 
+                game->draw_debug();
+
                 //menu
                 if(menu){
                     ImGui::Begin("Menu");

@@ -23,7 +23,7 @@ class DebugCamera{
         float rotation_speed = .3f;
         float rot_max_x = (((float)60/180) * glm::pi<float>());
 
-        bool freeze = false;
+        bool freeze = true;
  
         DebugCamera(){ 
             entity = new (God::entities.create()) Entity();

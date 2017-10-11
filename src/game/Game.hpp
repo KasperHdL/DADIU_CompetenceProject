@@ -3,10 +3,15 @@
 #include <string>
 #include <vector>
 
+#include <engine/renderer/Mesh.hpp>
+
 #include <engine/Engine.hpp>
 #include <engine/utils/SceneLoader.hpp>
 #include <engine/God.hpp>
 #include <game/DebugCamera.hpp>
+
+#include <game/Snake.hpp>
+#include <game/Fruit.hpp>
 
 
 class Game{
@@ -14,6 +19,15 @@ class Game{
         Engine* engine;
         DebugCamera* debug_camera;
         Snake* snake;
+        Fruit* fruit;
+
+
+        float restart_timer = 0;
+        float restart_delay = 1;
+
+        int fruits_collected = 0;
+        int max_fruits_collected = 0;
+
 
         Game(){}
         ~Game(){}
@@ -21,32 +35,96 @@ class Game{
         void initialize(Engine* engine){
             this->engine = engine;
 
+
             debug_camera = new DebugCamera();
-            debug_camera->entity->position = vec3(-3.3,-1.3,11.3);
-            debug_camera->entity->rotation = vec3(0.15,6.5,0);
+            debug_camera->entity->position = vec3(1.1,6.4,12.5);
+            debug_camera->entity->rotation = vec3(0.55,6.25,0);
 
-            snake = new Snake();
+            int playarea = 5;
 
+            snake = new Snake(playarea);
+            fruit = new Fruit(playarea);
+
+            //load landscape & hack to remove spec from landscape
             SceneLoader::load_scene("standard.scene");
-            //hack to remove spec from landscape
             God::entities[God::entities.count-1]->specularity = 0;
 
             Light* sun =  new (God::lights.create()) Light(Light::Type::Directional, vec3(0,-1,.25f), vec3(1,1,1), .15f);
-            sun->set_ortho_scale(15);
+            sun->set_ortho_scale(10);
             sun->create_shadow_map = true;
 
+            create_walls(playarea);
+
+            restart();
+        }
+
+        void restart(){
+            fruit->restart();
+            snake->restart();
+
+            restart_timer = 0;
+            fruits_collected = 0;
         }
 
         void update(float delta_time){
-
             debug_camera->update(delta_time);
+
+            if(snake->is_dead){
+                restart_timer += delta_time;
+
+                if(restart_timer >= restart_delay){
+                    restart();
+                }
+
+                return;
+            }
+
+
+            snake->update(delta_time);
+            fruit->update(delta_time);
+
+            if(fruit->is_active){
+                //check if fruit and snake is at the same place
+
+                if(snake->entity->position == fruit->entity->position){
+                    fruits_collected++;
+
+                    if(fruits_collected > max_fruits_collected) 
+                        max_fruits_collected = fruits_collected;
+
+                    snake->fruit_collected();
+                    fruit->collected();
+
+                }
+
+            }
 
         }
 
         void draw_debug(){
-
-
-
+            ImGui::Begin("Game");
+            ImGui::Text("Fruits Collected: %i\tMax: %i", fruits_collected, max_fruits_collected);
+            ImGui::End();
         }
 
+        void create_walls(int playarea){
+            Entity* e;
+            playarea += 1;
+
+            vec4 color = vec4(0,0,1,1);
+
+            for(int x = -playarea; x <= playarea; x ++){
+                for(int y = -playarea; y <= playarea; y ++){
+                    if(x == -playarea || x == playarea || y == -playarea || y == playarea){
+                        e = new (God::entities.create()) Entity();
+                        e->name = "Wall [" + std::to_string(x) + ", " + std::to_string(y) + "]";
+                        e->position = vec3(x, 0, y);
+                        e->scale = vec3(0.5f, 0.5f, 0.5f);
+                        e->mesh = Mesh::get_cube();
+                        e->color = color;
+
+                    }
+                }
+            }
+        }
 };
