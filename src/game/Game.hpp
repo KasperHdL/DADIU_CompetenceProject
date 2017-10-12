@@ -50,8 +50,6 @@ class Game{
             God::entities[God::entities.count-1]->specularity = 0;
 
             Light* sun =  new (God::lights.create()) Light(Light::Type::Directional, vec3(0,-1,.25f), vec3(1,1,1), .15f);
-            sun->set_ortho_scale(10);
-            sun->create_shadow_map = true;
 
             create_walls(playarea);
 

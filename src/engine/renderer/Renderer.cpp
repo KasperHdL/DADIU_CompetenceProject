@@ -44,7 +44,7 @@ void Renderer::initialize(SDL_Window* window, int screen_width, int screen_heigh
         shader->init_uniform("model"        , Shader::Uniform_Type::Mat4);
         shader->init_uniform("view"         , Shader::Uniform_Type::Mat4);
         shader->init_uniform("projection"   , Shader::Uniform_Type::Mat4);
-        shader->init_uniform("normalMat"    , Shader::Uniform_Type::Mat4);
+        shader->init_uniform("normalMat"    , Shader::Uniform_Type::Mat3);
 
         shader->init_uniform("ambientLight" , Shader::Uniform_Type::Vec4);
         shader->init_uniform("color"        , Shader::Uniform_Type::Vec4);
@@ -101,7 +101,7 @@ void Renderer::render(float delta_time){
             glm::mat4 a = glm::eulerAngleYXZ(e->rotation.x, e->rotation.y, e->rotation.z);
 
             glm::mat4 model_transform = t * a * s;
-            glm::mat4 normal_matrix = transpose(inverse((glm::mat3)(camera_v * model_transform)));
+            glm::mat3 normal_matrix = transpose(inverse((glm::mat3)model_transform));
 
             //vert
             shader->set_uniform("model"      , model_transform);
@@ -121,7 +121,7 @@ void Renderer::render(float delta_time){
                 if(l != nullptr){
 
                     vec4 light_pos_type = vec4(l->position, (int)l->type); 
-                    vec4 light_color_range = vec4(l->color, l->scale.x);
+                    vec4 light_color_range = vec4(l->color * l->intensity, l->range);
 
                     shader->set_uniform("lightPosType[" + to_string(i) + "]", light_pos_type);
                     shader->set_uniform("lightColorRange[" + to_string(i) + "]", light_color_range);

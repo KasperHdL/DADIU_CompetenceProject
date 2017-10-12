@@ -14,10 +14,11 @@ uniform mat4 projection;
 uniform mat3 normalMat;
 
 void main(void) {
-    vec4 eyePos = view * model * vec4(position,1);
+    mat4 mv = view * model;
+    vec4 eyePos = mv * vec4(position,1);
     gl_Position = projection * eyePos;
 
-    vNormal = transpose(inverse(mat3(model))) * normal;
+    vNormal = normalMat * normal;
     vUV = uv.xy;
     vEyePos = eyePos.xyz;
 }

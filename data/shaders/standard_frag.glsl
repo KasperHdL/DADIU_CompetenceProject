@@ -45,14 +45,14 @@ vec3 computeLight(){
         }
 
         // diffuse light
-        float thisDiffuse = max(0.0,dot(lightDirection, normal));
+        float thisDiffuse = dot(-lightDirection, normal);
         if (thisDiffuse > 0.0){
            lightColor += (att * diffuseFrac * thisDiffuse) * lightColorRange[i].xyz;
         }
 
         // specular light
         if (specularity > 0.0){
-            vec3 H = normalize(lightDirection - normalize(vEyePos));
+            vec3 H = normalize(-lightDirection - normalize(vEyePos));
             float nDotHV = dot(normal, H);
             if (nDotHV > 0.0){
                 float pf = pow(nDotHV, specularity);
@@ -60,6 +60,8 @@ vec3 computeLight(){
             }
         }
     }
+
+
     return lightColor;
 }
 
@@ -67,5 +69,5 @@ void main(void)
 {
     vec4 c = color;
     vec3 l = computeLight();
-    fragColor = c + vec4(l, 0);
+    fragColor = c * vec4(l, 1);
 }
