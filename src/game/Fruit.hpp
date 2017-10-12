@@ -33,7 +33,7 @@ class Fruit{
             entity->name = "Fruit";
 
             entity->position = vec3(10,10,10);
-            entity->scale = vec3(0.5f);
+            entity->scale = vec3(.5f);
 
             entity->mesh = Mesh::get_sphere();
             entity->color = vec4(1,0,0,0);

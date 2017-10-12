@@ -31,29 +31,15 @@ public:
 
     Camera* camera;
 
-    Shader* geom_shader;
-    Shader* stencil_shader;
-    Shader* light_shader;
-    Shader* screen_shader;
-    Shader* shadow_map_shader;
-    Shader* debug_shader;
+    vec4 ambient_light;
 
-    GLuint framebuffer = 0;
-    GLuint depth_framebuffer = 0;
-    GLuint depth_renderbuffer = 0;
-    GLuint post_framebuffer = 0;
+    //Shader
+    Shader* shader;
 
-    GLuint position_texture;
-    GLuint normal_texture;
-    GLuint color_texture;
-    GLuint specular_texture;
-
-    GLuint depth_texture;
-
-    GLuint post_texture;
-
+    //OpenGL
     SDL_Window* window;
     SDL_GLContext glcontext;
+
 
     float time = 0;
 

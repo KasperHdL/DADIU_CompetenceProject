@@ -1,26 +1,29 @@
 #pragma once
 
-
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
-#include "renderer/imgui/imgui_impl_sdl_gl3.hpp"
 
 #include "SDL.h"
 #include <string>
 
-#include <engine/Input.hpp>
 #include <engine/renderer/Mesh.hpp>
+#include <engine/renderer/Shader.hpp>
 
+//Debug
+#include <engine/renderer/imgui/imgui_impl_sdl_gl3.hpp>
+#include <engine/Input.hpp>
 
 using namespace glm;
 
 class Entity
 {
 public:
+    //general
     bool debug_control = false;
     std::string name;
 
+    //mesh
     Mesh* mesh = nullptr;
 
     //Transform
@@ -28,10 +31,13 @@ public:
     vec3 scale;
     vec3 rotation;
 
+    //Shader
+    Shader* shader;
+
+    //@TODO to be removed
     vec4 color = vec4(1,1,1,1);
     float specularity = 50;
 
-    //Render Properties
 
     Entity(){
     }
@@ -61,8 +67,6 @@ public:
             ImGui::DragFloat3("Position", &position.x, 0.1f);
             ImGui::DragFloat3("Scale",    &scale.x,    0.1f);
             ImGui::DragFloat3("Rotation", &rotation.x, 0.01f);
-            ImGui::ColorEdit3("Color", &color.x);
-            ImGui::DragFloat("Specularity", &specularity);
 
             ImGui::TreePop();
         }
