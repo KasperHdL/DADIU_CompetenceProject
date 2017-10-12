@@ -49,16 +49,6 @@ vec3 computeLight(){
         if (thisDiffuse > 0.0){
            lightColor += (att * diffuseFrac * thisDiffuse) * lightColorRange[i].xyz;
         }
-
-        // specular light
-        if (specularity > 0.0){
-            vec3 H = normalize(-lightDirection - normalize(vEyePos));
-            float nDotHV = dot(normal, H);
-            if (nDotHV > 0.0){
-                float pf = pow(nDotHV, specularity);
-                lightColor += vec3(att * diffuseFrac * pf); // white specular highlights
-            }
-        }
     }
 
 

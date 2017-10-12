@@ -68,6 +68,9 @@ public:
             ImGui::DragFloat3("Scale",    &scale.x,    0.1f);
             ImGui::DragFloat3("Rotation", &rotation.x, 0.01f);
 
+            ImGui::DragFloat4("Color", &color.x, 0.01f);
+            ImGui::DragFloat("Specularity", &specularity, 0.01f);
+
             ImGui::TreePop();
         }
     }

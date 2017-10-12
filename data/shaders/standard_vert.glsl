@@ -14,8 +14,7 @@ uniform mat4 projection;
 uniform mat3 normalMat;
 
 void main(void) {
-    mat4 mv = view * model;
-    vec4 eyePos = mv * vec4(position,1);
+    vec4 eyePos = view * model * vec4(position,1);
     gl_Position = projection * eyePos;
 
     vNormal = normalMat * normal;
