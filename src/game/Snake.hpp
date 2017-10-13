@@ -5,19 +5,15 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-
 #include <engine/Entity.hpp>
-#include <engine/God.hpp>
-
-#include <engine/renderer/Mesh.hpp>
+#include <engine/Transform.hpp>
 
 #include <game/SnakeTail.hpp>
 
  
 
-class Snake{ 
+class Snake : public Entity{ 
     public: 
-        Entity* entity; 
 
         DynamicPool<SnakeTail> tail = DynamicPool<SnakeTail>(8);
 
@@ -48,14 +44,15 @@ class Snake{
         Snake(int playarea){ 
             this->playarea = playarea;
 
-            entity = new (God::entities.create()) Entity();
-            entity->name = "Snake";
+            name = "Snake";
 
-            entity->position = origin;
-            entity->scale = vec3(.5f);
-            entity->mesh = Mesh::get_cube();
-            entity->color = vec4(1,0,0,1);
-            entity->specularity = 10;
+            transform->position = origin;
+            transform->scale = vec3(.5f);
+
+            set_mesh_as_cube();
+
+            color = vec4(1,0,0,1);
+            specularity = 10;
 
             snake_length = 3;
 
@@ -73,7 +70,7 @@ class Snake{
 
             snake_length = 3;
             local_pos = vec2(0);
-            entity->position = origin;
+            transform->position = origin;
 
             last_movement = vec2(0,0);
             input = vec2(1,0);
@@ -83,9 +80,9 @@ class Snake{
                 SnakeTail* t = tail[i];
                 if(t != nullptr){
                     if(i < snake_length)
-                        t->entity->position = origin;
+                        t->transform->position = origin;
                     else
-                        t->entity->position = vec3(10,10,10);
+                        t->transform->position = vec3(10,10,10);
                 }
             }
         }
@@ -121,7 +118,7 @@ class Snake{
                 if(-input == last_movement)input = last_movement;
                 local_pos += input;
                 last_movement = input;
-                entity->position = origin + vec3(local_pos.x, 0 ,local_pos.y);
+                transform->position = origin + vec3(local_pos.x, 0 ,local_pos.y);
 
                 is_dead = collision_check();
 
@@ -140,7 +137,7 @@ class Snake{
                 SnakeTail* t = tail[i];
                 if(t != nullptr){
 
-                    if(entity->position == t->entity->position){
+                    if(transform->position == t->transform->position){
                         return true;
                     }
                 }
@@ -150,14 +147,14 @@ class Snake{
         }
 
         void move_tail(){
-            vec3 pos_a = entity->position;
+            vec3 pos_a = transform->position;
             vec3 pos_b = pos_a;
 
             for(int i = 0; i < snake_length;i++){
                 SnakeTail* t = tail[i];
                 if(t != nullptr){
-                    pos_a = t->entity->position;
-                    t->set_position(pos_b);
+                    pos_a = t->transform->position;
+                    t->transform->position = pos_b;
                     pos_b = pos_a;
                 }
             }
@@ -169,10 +166,10 @@ class Snake{
 
             if(tail.count < snake_length){
                 SnakeTail* t = new (tail.create()) SnakeTail(snake_length);
-                t->set_position(entity->position);
+                t->transform->position = transform->position;
             }else{
                 SnakeTail* t = tail[snake_length-1];
-                t->set_position(entity->position);
+                t->transform->position = transform->position;
 
             }
 

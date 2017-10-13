@@ -6,7 +6,7 @@
 class Camera{
 public:
 
-    Entity* entity;
+    Transform* transform;
 
     mat4 view_transform;
     mat4 projection_transform;
@@ -24,14 +24,7 @@ public:
         view_transform = mat4(1);
         projection_transform = mat4(1);
 
-        entity = new (God::entities.create()) Entity(); 
-        entity->name = "Camera";
-        entity->mesh = nullptr;
-        entity->position = vec3();
-        entity->scale = vec3();
-        entity->rotation = vec3();
-        entity->debug_control = false;
-
+        transform = new (God::transforms.create()) Transform();
     }
 
     void set_perspective_projection(){

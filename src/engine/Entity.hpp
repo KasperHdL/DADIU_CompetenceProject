@@ -1,14 +1,15 @@
 #pragma once
 
-#include <glm/gtx/euler_angles.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
 
 #include "SDL.h"
 #include <string>
 
+#include <engine/God.hpp>
 #include <engine/renderer/Mesh.hpp>
 #include <engine/renderer/Shader.hpp>
+
+#include <engine/Transform.hpp>
 
 //Debug
 #include <engine/renderer/imgui/imgui_impl_sdl_gl3.hpp>
@@ -23,15 +24,10 @@ public:
     bool debug_control = false;
     std::string name;
 
-    //mesh
+    Transform* transform = nullptr;
+
     Mesh* mesh = nullptr;
 
-    //Transform
-    vec3 position;
-    vec3 scale;
-    vec3 rotation;
-
-    //Shader
     Shader* shader;
 
     //@TODO to be removed
@@ -40,39 +36,64 @@ public:
 
 
     Entity(){
+        transform = new (God::transforms.create()) Transform();
     }
 
     ~Entity(){
-
     }
 
     void draw_debug_inspector(float dt, float control_speed){
         if(ImGui::TreeNode(name.c_str())){
             ImGui::Checkbox("Control", &debug_control);
+
             if(debug_control){
                 if(Input::get_key_down(SDL_SCANCODE_W))
-                    position.z += control_speed * dt;
+                    transform->position.z += control_speed * dt;
                  if(Input::get_key_down(SDL_SCANCODE_A))
-                    position.x += control_speed * dt;
+                    transform->position.x += control_speed * dt;
                 if(Input::get_key_down(SDL_SCANCODE_S))
-                    position.z -= control_speed * dt;
+                    transform->position.z -= control_speed * dt;
                 if(Input::get_key_down(SDL_SCANCODE_D))
-                    position.x -= control_speed * dt;
+                    transform->position.x -= control_speed * dt;
                 if(Input::get_key_down(SDL_SCANCODE_SPACE))
-                    position.y += control_speed * dt;
+                    transform->position.y += control_speed * dt;
                 if(Input::get_key_down(SDL_SCANCODE_LSHIFT))
-                    position.y -= control_speed * dt;
+                    transform->position.y -= control_speed * dt;
             }
 
-            ImGui::DragFloat3("Position", &position.x, 0.1f);
-            ImGui::DragFloat3("Scale",    &scale.x,    0.1f);
-            ImGui::DragFloat3("Rotation", &rotation.x, 0.01f);
+            ImGui::DragFloat3("Position", &transform->position.x, 0.1f);
+            ImGui::DragFloat3("Scale",    &transform->scale.x,    0.1f);
+            ImGui::DragFloat3("Rotation", &transform->rotation.x, 0.01f);
 
             ImGui::DragFloat4("Color", &color.x, 0.01f);
             ImGui::DragFloat("Specularity", &specularity, 0.01f);
 
             ImGui::TreePop();
         }
+    }
+
+    void set_mesh_as_cube(){
+        mesh = Mesh::get_cube();
+
+        *God::cube_mesh_entities.create() = this;
+    }
+
+    void set_mesh_as_sphere(){
+        mesh = Mesh::get_sphere();
+
+        *God::sphere_mesh_entities.create() = this;
+    }
+
+    void set_mesh_as_quad(){
+        mesh = Mesh::get_quad();
+
+        *God::quad_mesh_entities.create() = this;
+    }
+
+    void set_mesh_as_custom(Mesh* mesh){
+        this->mesh = mesh;
+
+        *God::custom_mesh_entities.create() = this;
     }
 
 

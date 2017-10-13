@@ -3,6 +3,7 @@ project(DADIU_CompetenceProject CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(DEBUG_MODE TRUE)
+set(CMAKE_BUILD_TYPE Debug)
 
 add_definitions(-DDEBUG)
 

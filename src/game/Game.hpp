@@ -6,10 +6,10 @@
 #include <engine/renderer/Mesh.hpp>
 
 #include <engine/Engine.hpp>
-#include <engine/utils/SceneLoader.hpp>
 #include <engine/God.hpp>
-#include <game/DebugCamera.hpp>
+#include <engine/utils/DynamicPool.hpp>
 
+#include <game/DebugCamera.hpp>
 #include <game/Snake.hpp>
 #include <game/Fruit.hpp>
 
@@ -18,9 +18,11 @@ class Game{
     public:
         Engine* engine;
         DebugCamera* debug_camera;
+
         Snake* snake;
         Fruit* fruit;
 
+        DynamicPool<Entity> walls = DynamicPool<Entity>(32);
 
         float restart_timer = 0;
         float restart_delay = 1;
@@ -35,19 +37,14 @@ class Game{
         void initialize(Engine* engine){
             this->engine = engine;
 
-
             debug_camera = new DebugCamera();
-            debug_camera->entity->position = vec3(1.1,6.4,12.5);
-            debug_camera->entity->rotation = vec3(0.55,6.25,0);
+            debug_camera->transform->position = vec3(1.1,6.4,12.5);
+            debug_camera->transform->rotation = vec3(0.55,6.25,0);
 
             int playarea = 5;
 
             snake = new Snake(playarea);
             fruit = new Fruit(playarea);
-
-            //load landscape & hack to remove spec from landscape
-            SceneLoader::load_scene("standard.scene");
-            God::entities[God::entities.count-1]->specularity = 0;
 
             Light* sun =  new (God::lights.create()) Light(Light::Type::Directional, vec3(0,-1,.25f), vec3(1,1,1), .15f);
 
@@ -84,7 +81,7 @@ class Game{
             if(fruit->is_active){
                 //check if fruit and snake is at the same place
 
-                if(snake->entity->position == fruit->entity->position){
+                if(snake->transform->position == fruit->transform->position){
                     fruits_collected++;
 
                     if(fruits_collected > max_fruits_collected) 
@@ -114,11 +111,15 @@ class Game{
             for(int x = -playarea; x <= playarea; x ++){
                 for(int y = -playarea; y <= playarea; y ++){
                     if(x == -playarea || x == playarea || y == -playarea || y == playarea){
-                        e = new (God::entities.create()) Entity();
+                        e = new (walls.create()) Entity();
+
                         e->name = "Wall [" + std::to_string(x) + ", " + std::to_string(y) + "]";
-                        e->position = vec3(x, 0, y);
-                        e->scale = vec3(0.5f, 0.5f, 0.5f);
-                        e->mesh = Mesh::get_cube();
+
+                        e->transform->position = vec3(x, 0, y);
+                        e->transform->scale = vec3(0.5f, 0.5f, 0.5f);
+
+                        e->set_mesh_as_cube();
+
                         e->color = color;
 
                     }

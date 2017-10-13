@@ -2,10 +2,16 @@
 #include <engine/Engine.hpp>
 #include <debug/DebugInterface.hpp>
 #include <engine/renderer/Camera.hpp>
+#include <engine/Entity.hpp>
 
 Renderer* Renderer::instance = nullptr;
 
 Renderer::Renderer(){}
+
+Renderer::~Renderer(){
+    SDL_GL_DeleteContext(glcontext);
+    instance = nullptr;
+}
 
 void Renderer::initialize(SDL_Window* window, int screen_width, int screen_height){
     if (instance != nullptr){
@@ -59,11 +65,6 @@ void Renderer::initialize(SDL_Window* window, int screen_width, int screen_heigh
     }
 }
 
-Renderer::~Renderer(){
-
-    SDL_GL_DeleteContext(glcontext);
-    instance = nullptr;
-}
 
 void Renderer::render(float delta_time){
 
@@ -81,62 +82,69 @@ void Renderer::render(float delta_time){
     camera->set_viewport(0,0,w,h);
     camera->set_perspective_projection(); 
 
-    mat4 camera_v = camera->view_transform;
-    mat4 camera_p = camera->projection_transform;
 
 
     ////////////////////
     // RENDER SCENE
     ///////////////////
     
-    for(int i = 0; i < God::entities.capacity;i++){
-        Entity* e = God::entities[i];
-        if(e != nullptr && e->mesh != nullptr){
-            //set uniforms
-            //Shader* shader = e->shader;
-            shader->use();
+    shader->use();
 
-            glm::mat4 t = glm::translate(mat4(), e->position);
-            glm::mat4 s = glm::scale(mat4(), e->scale);
-            glm::mat4 a = glm::eulerAngleYXZ(e->rotation.x, e->rotation.y, e->rotation.z);
+    //CUBE
+    if(God::cube_mesh_entities.count > 0){
+        Mesh::get_cube()->bind();
 
-            glm::mat4 model_transform = t * a * s;
-            glm::mat3 normal_matrix = transpose(inverse((glm::mat3)model_transform));
-
-            //vert
-            shader->set_uniform("model"      , model_transform);
-            shader->set_uniform("normalMat"  , normal_matrix);
-
-            shader->set_uniform("view"       , camera_v);
-            shader->set_uniform("projection" , camera_p);
-
-            shader->set_uniform("ambientLight", ambient_light);
-            shader->set_uniform("color", e->color);
-
-            shader->set_uniform("specularity", e->specularity);
-
-            //lights
-            for(int i = 0; i < 4;i++){
-                Light* l = God::lights[i];
-                if(l != nullptr){
-
-                    vec4 light_pos_type = vec4(l->position, (int)l->type); 
-                    vec4 light_color_range = vec4(l->color * l->intensity, l->range);
-
-                    shader->set_uniform("lightPosType[" + to_string(i) + "]", light_pos_type);
-                    shader->set_uniform("lightColorRange[" + to_string(i) + "]", light_color_range);
-
+        for(int i = 0; i < God::cube_mesh_entities.capacity;i++){
+            Entity** p = God::cube_mesh_entities[i];
+            if(p != nullptr){
+                Entity* e = *p;
+                if(e->mesh != nullptr){
+                    _render_entity(e);
                 }
             }
+        }
+    }
 
-            //draw mesh
-            e->mesh->bind();
+    //SPHERE
+    if(God::sphere_mesh_entities.count > 0){
+        Mesh::get_sphere()->bind();
 
-            int indexCount = (int) e->mesh->indices.size();
-            if (indexCount == 0){
-                glDrawArrays((GLenum)e->mesh->topology, 0, e->mesh->vertex_count);
-            } else {
-                glDrawElements((GLenum) e->mesh->topology, indexCount, GL_UNSIGNED_SHORT, 0);
+        for(int i = 0; i < God::sphere_mesh_entities.capacity;i++){
+            Entity** p = God::sphere_mesh_entities[i];
+            if(p != nullptr){
+                Entity* e = *p;
+                if(e->mesh != nullptr){
+                    _render_entity(e);
+                }
+            }
+        }
+    }
+
+    //QUADS
+    if(God::quad_mesh_entities.count > 0){
+        Mesh::get_quad()->bind();
+
+        for(int i = 0; i < God::quad_mesh_entities.capacity;i++){
+            Entity** p = God::quad_mesh_entities[i];
+            if(p != nullptr){
+                Entity* e = *p;
+                if(e->mesh != nullptr){
+                    _render_entity(e);
+                }
+            }
+        }
+    }
+
+    //CUSTOM
+    if(God::custom_mesh_entities.count > 0){
+        for(int i = 0; i < God::custom_mesh_entities.capacity;i++){
+            Entity** p = God::custom_mesh_entities[i];
+            if(p != nullptr){
+                Entity* e = *p;
+                if(e->mesh != nullptr){
+                    e->mesh->bind();
+                    _render_entity(e);
+                }
             }
         }
     }
@@ -156,8 +164,55 @@ void Renderer::render(float delta_time){
     return;
 }
 
-void Renderer::_render_scene(Shader* shader){
+void Renderer::_render_entity(Entity* entity){
 
+    if(entity->transform == nullptr){
+        cout << entity->name << "->transform = nullptr\n";
+
+        return;
+    }
+
+    //vert
+    shader->set_uniform("model"      , entity->transform->get_model_transform());
+    shader->set_uniform("normalMat"  , entity->transform->get_normal_transform());
+
+    shader->set_uniform("view"       , camera->view_transform);
+    shader->set_uniform("projection" , camera->projection_transform);
+
+    shader->set_uniform("ambientLight", ambient_light);
+    shader->set_uniform("color", entity->color);
+
+    shader->set_uniform("specularity", entity->specularity);
+
+    //lights
+    for(int i = 0; i < 4;i++){
+        Light* l = God::lights[i];
+        if(l != nullptr){
+
+            vec4 light_pos_type = vec4(l->position, (int)l->type); 
+            vec4 light_color_range = vec4(l->color * l->intensity, l->range);
+
+            shader->set_uniform("lightPosType[" + to_string(i) + "]", light_pos_type);
+            shader->set_uniform("lightColorRange[" + to_string(i) + "]", light_color_range);
+
+        }
+    }
+
+    int indexCount = (int) entity->mesh->indices.size();
+    if (indexCount == 0){
+        glDrawArrays((GLenum)entity->mesh->topology, 0, entity->mesh->vertex_count);
+    } else {
+        glDrawElements((GLenum) entity->mesh->topology, indexCount, GL_UNSIGNED_SHORT, 0);
+    }
 
 }
 
+void Renderer::_render_pool(DynamicPool<Entity*> pool){
+    for(int i = 0; i < pool.capacity;i++){
+        Entity* e = *pool[i];
+        if(e != nullptr){
+            cout << "i " << i << "\n";
+            _render_entity(e);
+        }
+    }
+}

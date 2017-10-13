@@ -272,6 +272,7 @@ class DebugInterface{
                     ImGui::Text("Entities:");
                     ImGui::Separator();
                     //entities
+                    /*
                     for(int i = 0; i < God::entities.capacity;i++){
                         Entity* e = God::entities[i];
                         if(e != nullptr){
@@ -281,25 +282,10 @@ class DebugInterface{
                             ImGui::Separator();
                         }
                     }
+                    */
                     ImGui::End();
                 }
                 
-                if(scene_manager){
-                    ImGui::Begin("Scene Manager");
-                    ImGui::InputText("Filename", filename, 50);
-                    if(ImGui::Button("Save")){
-                        SceneLoader::save_scene(filename);
-                    }
-
-                    ImGui::SameLine();
-
-                    if(ImGui::Button("Load")){
-                        SceneLoader::load_scene(filename);
-                    }
-
-
-                    ImGui::End();
-                }
                 if(create){
                     ImGui::Begin("Create Menu");
                     ImGui::Combo("Type", &type_selected_index, type_entities, type_num_items);
@@ -322,6 +308,7 @@ class DebugInterface{
                 Light* l = new (God::lights.create()) Light();
 
             }else{
+                /*
                 Entity* e = new (God::entities.create()) Entity();
 
                 e->name = type_entities[type_selected_index];
@@ -335,6 +322,7 @@ class DebugInterface{
                 e->position = glm::vec3();
                 e->scale = glm::vec3(1,1,1);
                 e->rotation = glm::vec3();
+                */
             }
         }
 

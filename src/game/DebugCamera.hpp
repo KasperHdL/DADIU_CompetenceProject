@@ -13,11 +13,9 @@
 
  
 
-class DebugCamera{ 
+class DebugCamera : public Entity{ 
     public: 
-        Entity* entity; 
         Camera* camera;
-        DebugInterface* debug;
 
         float speed = 15;
         float rotation_speed = .3f;
@@ -26,12 +24,11 @@ class DebugCamera{
         bool freeze = true;
  
         DebugCamera(){ 
-            entity = new (God::entities.create()) Entity();
-            entity->name = "Debug Camera";
-            entity->position = vec3(10,10,10);
+            name = "Debug Camera";
+
+            transform->position = vec3(10,10,10);
 
             camera = Renderer::instance->camera;
-            debug = Renderer::instance->debug;
 
         } 
 
@@ -60,19 +57,19 @@ class DebugCamera{
                 move_direction += vec3(0,-1,0);
 
             if(move_direction != vec3(0,0,0))
-                entity->position += mat3(eulerAngleY(-entity->rotation.y)) * (normalize(move_direction) * speed * dt);
+                transform->position += mat3(eulerAngleY(-transform->rotation.y)) * (normalize(move_direction) * speed * dt);
 
             //rotation
             vec2 delta_mouse = Input::get_mouse_delta();
 
-            entity->rotation.x += delta_mouse.y * rotation_speed * dt;
-            entity->rotation.x = clamp<float>(entity->rotation.x, -rot_max_x, rot_max_x);
-            entity->rotation.y += delta_mouse.x * rotation_speed * dt;
+            transform->rotation.x += delta_mouse.y * rotation_speed * dt;
+            transform->rotation.x = clamp<float>(transform->rotation.x, -rot_max_x, rot_max_x);
+            transform->rotation.y += delta_mouse.x * rotation_speed * dt;
 
             //update camera
-            camera->view_transform = (eulerAngleX(entity->rotation.x) * eulerAngleY(entity->rotation.y)) * glm::translate(mat4(), -entity->position);
-            camera->entity->position = entity->position;
-            camera->entity->rotation = entity->rotation;
+            camera->view_transform = (eulerAngleX(transform->rotation.x) * eulerAngleY(transform->rotation.y)) * glm::translate(mat4(), -transform->position);
+            camera->transform->position = transform->position;
+            camera->transform->rotation = transform->rotation;
 
 
         }

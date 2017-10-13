@@ -6,31 +6,30 @@
 
 
 #include <engine/Entity.hpp>
-#include <engine/God.hpp>
+#include <engine/Transform.hpp>
 
 #include <engine/renderer/Mesh.hpp>
 
  
 
-class SnakeTail{ 
+class SnakeTail : public Entity{ 
     public: 
-        Entity* entity; 
 
         SnakeTail(int index){ 
-            entity = new (God::entities.create()) Entity();
-            entity->name = "SnakeTail";
+            name = "SnakeTail";
 
-            entity->position = vec3(0,0,0);
+            transform->position = vec3(0);
+            transform->scale = vec3(0.5f);
 
-            entity->mesh = Mesh::get_cube();
-            entity->scale = vec3(0.5f);
-            entity->color = vec4(0,1,0,1);
-            entity->specularity = 10;
+            set_mesh_as_cube();
+
+            color = vec4(0,1,0,1);
+            specularity = 10;
 
         } 
 
         void set_position(vec3 pos){
-            entity->position = pos;
+            transform->position = pos;
 
         }
  

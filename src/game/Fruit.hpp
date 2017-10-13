@@ -5,17 +5,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
 
-
 #include <engine/Entity.hpp>
-#include <engine/God.hpp>
 
-#include <engine/renderer/Mesh.hpp>
-
- 
-
-class Fruit{ 
+class Fruit : public Entity{ 
     public: 
-        Entity* entity; 
 
         float start_delay = 5;
 
@@ -29,20 +22,20 @@ class Fruit{
         Fruit(int playarea){ 
             this->playarea = playarea;
 
-            entity = new (God::entities.create()) Entity();
-            entity->name = "Fruit";
+            name = "Fruit";
 
-            entity->position = vec3(10,10,10);
-            entity->scale = vec3(.5f);
+            transform->position = vec3(10);
+            transform->scale = vec3(.5f);
 
-            entity->mesh = Mesh::get_sphere();
-            entity->color = vec4(1,0,0,0);
-            entity->specularity = 10;
+            set_mesh_as_sphere();
+
+            color = vec4(1,0,0,0);
+            specularity = 10;
         } 
 
         void restart(){
             is_active = false;
-            entity->position = vec3(10,10,10);
+            transform->position = vec3(10);
             
             delay = start_delay;
             time = 0;
@@ -59,14 +52,14 @@ class Fruit{
                 int x = (std::rand() % (playarea * 2)) - playarea;
                 int y = (std::rand() % (playarea * 2)) - playarea;
 
-                entity->position = vec3(x, 0, y);
+                transform->position = vec3(x, 0, y);
             }
         }
 
         void collected(){
             is_active = false;
             time = 0;
-            entity->position = vec3(10,10,10);
+            transform->position = vec3(10);
 
             delay *= 0.95f;
         }

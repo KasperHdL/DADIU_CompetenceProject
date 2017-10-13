@@ -23,9 +23,6 @@ class Game;
 class DebugInterface;
 
 class Engine{
-private:
- //   Shader* _shader = nullptr;
-    int _shader_time;
 public:
     SDL_Window* window;
     Game* game;

@@ -51,6 +51,9 @@ public:
     int screen_height;
 
     static Renderer* instance;
+
 private:
-    void _render_scene(Shader* shader);
+
+    void _render_entity(Entity* entity);
+    void _render_pool(DynamicPool<Entity*> pool);
 };
