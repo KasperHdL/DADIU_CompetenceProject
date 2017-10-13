@@ -16,6 +16,11 @@ class God{
     //entity
     static DynamicPool<Transform> transforms;
 
+//////////
+//POINTERS
+
+    static DynamicPool<Entity*> entities;
+    
     //meshes
     static DynamicPool<Entity*> cube_mesh_entities;
     static DynamicPool<Entity*> sphere_mesh_entities;

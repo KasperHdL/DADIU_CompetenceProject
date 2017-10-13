@@ -272,17 +272,25 @@ class DebugInterface{
                     ImGui::Text("Entities:");
                     ImGui::Separator();
                     //entities
-                    /*
                     for(int i = 0; i < God::entities.capacity;i++){
-                        Entity* e = God::entities[i];
+                        Entity** p = God::entities[i];
+                        if(p == nullptr) continue;
+
+                        Entity* e = *p;
                         if(e != nullptr){
                             ImGui::PushID(id++);
-                            e->draw_debug_inspector(dt, control_speed);
+
+                            if(ImGui::TreeNode(e->name.c_str())){
+                                e->draw_debug_inspector(dt, control_speed);
+
+                                ImGui::TreePop();
+                            }
+
                             ImGui::PopID();
                             ImGui::Separator();
                         }
                     }
-                    */
+
                     ImGui::End();
                 }
                 

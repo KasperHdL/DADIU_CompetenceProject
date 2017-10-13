@@ -176,6 +176,17 @@ class Snake : public Entity{
             move_delay *= 0.9f;
         }
 
+        void draw_debug_inspector(float dt, float control_speed){
+            Entity::draw_debug_inspector(dt, control_speed);
+
+            ImGui::Text("Snake Settings:");
+            ImGui::Separator();
+
+            ImGui::DragFloat("Start Move Delay", &start_move_delay, 0.005f);
+            ImGui::DragFloat("Current Move Delay", &move_delay, 0.005f);
+
+        }
+
  
         ~Snake(){ 
  

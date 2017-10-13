@@ -36,40 +36,38 @@ public:
 
 
     Entity(){
+        *God::entities.create() = this;
         transform = new (God::transforms.create()) Transform();
     }
 
     ~Entity(){
     }
 
-    void draw_debug_inspector(float dt, float control_speed){
-        if(ImGui::TreeNode(name.c_str())){
-            ImGui::Checkbox("Control", &debug_control);
+    virtual void draw_debug_inspector(float dt, float control_speed){
+        ImGui::Checkbox("Control", &debug_control);
 
-            if(debug_control){
-                if(Input::get_key_down(SDL_SCANCODE_W))
-                    transform->position.z += control_speed * dt;
-                 if(Input::get_key_down(SDL_SCANCODE_A))
-                    transform->position.x += control_speed * dt;
-                if(Input::get_key_down(SDL_SCANCODE_S))
-                    transform->position.z -= control_speed * dt;
-                if(Input::get_key_down(SDL_SCANCODE_D))
-                    transform->position.x -= control_speed * dt;
-                if(Input::get_key_down(SDL_SCANCODE_SPACE))
-                    transform->position.y += control_speed * dt;
-                if(Input::get_key_down(SDL_SCANCODE_LSHIFT))
-                    transform->position.y -= control_speed * dt;
-            }
-
-            ImGui::DragFloat3("Position", &transform->position.x, 0.1f);
-            ImGui::DragFloat3("Scale",    &transform->scale.x,    0.1f);
-            ImGui::DragFloat3("Rotation", &transform->rotation.x, 0.01f);
-
-            ImGui::DragFloat4("Color", &color.x, 0.01f);
-            ImGui::DragFloat("Specularity", &specularity, 0.01f);
-
-            ImGui::TreePop();
+        if(debug_control){
+            if(Input::get_key_down(SDL_SCANCODE_W))
+                transform->position.z += control_speed * dt;
+             if(Input::get_key_down(SDL_SCANCODE_A))
+                transform->position.x += control_speed * dt;
+            if(Input::get_key_down(SDL_SCANCODE_S))
+                transform->position.z -= control_speed * dt;
+            if(Input::get_key_down(SDL_SCANCODE_D))
+                transform->position.x -= control_speed * dt;
+            if(Input::get_key_down(SDL_SCANCODE_SPACE))
+                transform->position.y += control_speed * dt;
+            if(Input::get_key_down(SDL_SCANCODE_LSHIFT))
+                transform->position.y -= control_speed * dt;
         }
+
+        ImGui::DragFloat3("Position", &transform->position.x, 0.1f);
+        ImGui::DragFloat3("Scale",    &transform->scale.x,    0.1f);
+        ImGui::DragFloat3("Rotation", &transform->rotation.x, 0.01f);
+
+        ImGui::ColorEdit4("Color", &color.x);
+        ImGui::DragFloat("Specularity", &specularity, 0.01f);
+
     }
 
     void set_mesh_as_cube(){
