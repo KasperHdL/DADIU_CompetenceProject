@@ -1,5 +1,5 @@
-#include <game/Game.hpp>
-#include <engine/Engine.hpp>
+#include "game/Game.hpp"
+#include "engine/Engine.hpp"
 
 Game game = Game();
 
@@ -9,4 +9,3 @@ int main() {
 
     return engine.initialize(&game);
 }
-

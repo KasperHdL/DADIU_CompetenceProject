@@ -1,7 +1,7 @@
-#include <engine/Engine.hpp>
+#include "engine/Engine.hpp"
 
-#include <game/Game.hpp>
-#include <debug/DebugInterface.hpp>
+#include "game/Game.hpp"
+#include "debug/DebugInterface.hpp"
 
 
 Engine::Engine(int screen_width, int screen_height){

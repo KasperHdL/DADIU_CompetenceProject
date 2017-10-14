@@ -5,15 +5,15 @@
 #include "SDL.h"
 #include <string>
 
-#include <engine/God.hpp>
-#include <engine/renderer/Mesh.hpp>
-#include <engine/renderer/Shader.hpp>
+#include "engine/God.hpp"
+#include "engine/renderer/Mesh.hpp"
+#include "engine/renderer/Shader.hpp"
 
-#include <engine/Transform.hpp>
+#include "engine/Transform.hpp"
 
 //Debug
-#include <engine/renderer/imgui/imgui_impl_sdl_gl3.hpp>
-#include <engine/Input.hpp>
+#include "engine/renderer/imgui/imgui_impl_sdl_gl3.hpp"
+#include "engine/Input.hpp"
 
 using namespace glm;
 

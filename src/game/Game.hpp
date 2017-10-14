@@ -3,15 +3,15 @@
 #include <string>
 #include <vector>
 
-#include <engine/renderer/Mesh.hpp>
+#include "engine/renderer/Mesh.hpp"
 
-#include <engine/Engine.hpp>
-#include <engine/God.hpp>
-#include <engine/utils/DynamicPool.hpp>
+#include "engine/Engine.hpp"
+#include "engine/God.hpp"
+#include "engine/utils/DynamicPool.hpp"
 
-#include <game/DebugCamera.hpp>
-#include <game/Snake.hpp>
-#include <game/Fruit.hpp>
+#include "game/DebugCamera.hpp"
+#include "game/Snake.hpp"
+#include "game/Fruit.hpp"
 
 
 class Game{
