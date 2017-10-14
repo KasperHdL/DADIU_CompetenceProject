@@ -3,11 +3,12 @@
 #include "SDL.h"
 #include <iostream>
 #include <string>
+#include <fstream>
 
-class DataPath{
+class DataHandler{
 public:
 
-    static std::string get(const std::string &file = ""){
+    static std::string get_path(const std::string &file = ""){
 
 #ifdef _WIN32
         const char PATH_SEP = '\\';
@@ -39,5 +40,15 @@ public:
 
         return file.empty() ? baseRes: baseRes + file;
     }
+
+    static std::string load_file_as_string(string filename){
+        std::ifstream file(get_path(filename));
+
+        std::string vert((std::istreambuf_iterator<char>(file)),std::istreambuf_iterator<char>());
+        file.close();
+
+        return vert;
+    }
+
 
 };

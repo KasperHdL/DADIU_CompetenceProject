@@ -5,8 +5,8 @@ DynamicPool<Shader> AssetManager::shader_pool = DynamicPool<Shader>(8);
 vector<Mesh*> AssetManager::mesh_pool;
 
 Shader* AssetManager::get_shader(string vertex_path, string fragment_path){
-    string vert = FileLoader::load_file_as_string(vertex_path);
-    string frag = FileLoader::load_file_as_string(fragment_path);
+    string vert = DataHandler::load_file_as_string(vertex_path);
+    string frag = DataHandler::load_file_as_string(fragment_path);
 
     Shader* shader = new (shader_pool.create()) Shader(vert, frag);
 
@@ -20,7 +20,7 @@ Shader* AssetManager::get_shader(string vertex_path, string fragment_path){
     shader->fragment_path = fragment_path;
 
     struct stat st;
-    int ierr = stat(DataPath::get(vertex_path).c_str(), &st);
+    int ierr = stat(DataHandler::get_path(vertex_path).c_str(), &st);
     if (ierr != 0){
         cout << "AssetManager could not stat file " << vertex_path << "\n";
         return shader;
@@ -28,7 +28,7 @@ Shader* AssetManager::get_shader(string vertex_path, string fragment_path){
 
     timestamp = st.st_mtime;
 
-    ierr = stat(DataPath::get(fragment_path).c_str(), &st);
+    ierr = stat(DataHandler::get_path(fragment_path).c_str(), &st);
     if (ierr != 0){
         cout << "AssetManager could not stat file " << fragment_path << "\n";
         return shader;
@@ -80,7 +80,9 @@ void AssetManager::cleanup(){
 
 }
 
-
+/////////////
+/// PRIVATE
+/////////////
 
 void AssetManager::_check_shader(Shader* shader){
     if(shader == nullptr) return;
@@ -88,7 +90,7 @@ void AssetManager::_check_shader(Shader* shader){
     bool changed = false;
 
     struct stat st;
-    int ierr = stat(DataPath::get(shader->vertex_path).c_str(), &st);
+    int ierr = stat(DataHandler::get_path(shader->vertex_path).c_str(), &st);
     if (ierr != 0) {
             cout << "error";
     }
@@ -96,7 +98,7 @@ void AssetManager::_check_shader(Shader* shader){
     if(st.st_mtime > shader->timestamp) changed = true;
 
     if(!changed){
-        ierr = stat(DataPath::get(shader->fragment_path).c_str(), &st);
+        ierr = stat(DataHandler::get_path(shader->fragment_path).c_str(), &st);
         if (ierr != 0) {
                 cout << "error";
         }
@@ -107,8 +109,8 @@ void AssetManager::_check_shader(Shader* shader){
         cout << "Loading Shader\n";
         shader->timestamp = st.st_mtime;
 
-        std::string vert = FileLoader::load_file_as_string(shader->vertex_path);
-        std::string frag = FileLoader::load_file_as_string(shader->fragment_path);
+        std::string vert = DataHandler::load_file_as_string(shader->vertex_path);
+        std::string frag = DataHandler ::load_file_as_string(shader->fragment_path);
 
         shader->recompile(vert, frag);
 

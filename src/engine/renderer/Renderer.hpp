@@ -8,7 +8,6 @@
 #include <iostream>
 #include <vector>
 
-#include <engine/utils/FileLoader.hpp>
 #include <engine/utils/AssetManager.hpp>
 
 #include <engine/renderer/Shader.hpp>

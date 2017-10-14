@@ -8,7 +8,7 @@
 #include <vector>
 
 #include <engine/renderer/Mesh.hpp>
-#include <engine/utils/DataPath.hpp>
+#include <engine/utils/DataHandler.hpp>
 
 
 
@@ -34,7 +34,7 @@ public:
         vector<int> vectices_indices;
         vector<int> normals_indices;
 
-        ifstream file(DataPath::get(filename));
+        ifstream file(DataHandler::get_path(filename));
         string line;
 
         if(file.is_open()){
