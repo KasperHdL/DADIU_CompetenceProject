@@ -7,6 +7,7 @@
  
 IF(WIN32) 
     FIND_PATH( GLM_INCLUDE_DIR glm/glm.hpp 
+            ${LIBRARY_SEARCH_PATHS}/glm
             $ENV{PROGRAMFILES}/glm 
             ${GLM_ROOT_DIR}/include 
             $ENV{GLM_ROOT_DIR}/include 
@@ -14,6 +15,7 @@ IF(WIN32)
             DOC "The directory where glm/glm.hpp resides") 
 ELSE(WIN32) 
     FIND_PATH( GLM_INCLUDE_DIR glm/glm.hpp 
+            ${LIBRARY_SEARCH_PATHS}/glm/include
             /usr/include 
             /usr/local/include 
             /sw/include 

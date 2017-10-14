@@ -67,7 +67,9 @@
 
 message("<FindSDL2.cmake>")
 
+
 SET(SDL2_SEARCH_PATHS
+        ${LIBRARY_SEARCH_PATHS}
 		~/Library/Frameworks
 		/Library/Frameworks
 		/usr/local
