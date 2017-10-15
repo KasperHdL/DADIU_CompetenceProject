@@ -73,7 +73,7 @@ Shader::Uniform Shader::find_uniform(std::string name){
     }
     Shader::Uniform u;
     u.location_id = -1;
-    std::cout << "Cannot find uniform " << name << " in " << vertex_path << " or " << fragment_path << "\n";
+    std::cout << "Cannot find uniform " << name.c_str() << " in " << vertex_path.c_str() << " or " << fragment_path.c_str() << "\n";
     return u;
 }
 
@@ -108,7 +108,7 @@ bool Shader::_check_uniform(Shader::Uniform uniform, Shader::Uniform_Type correc
 //            std::cout << "Cannot find uniform has it been initialized and is the shader active\n";
         return false;
     }else if(uniform.type != correctType){
-        std::cout << "Incorrect uniform type for " << uniform.name << "\n";
+        std::cout << "Incorrect uniform type for " << uniform.name.c_str() << "\n";
         return false;
     }
 
@@ -180,7 +180,7 @@ bool Shader::_compile_shader_part(GLenum type, const char* code, GLuint& shader)
             break;
         }
 
-        std::cout<<"\n"<<(std::string{errorLog.data()}+"\n"+ type_string +" error")<<std::endl;
+        std::cout << "\n" << (std::string{errorLog.data()} + "\n" + type_string +" error").c_str() << std::endl;
         return false;
     }
 

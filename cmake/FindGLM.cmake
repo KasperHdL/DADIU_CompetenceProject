@@ -2,8 +2,7 @@
 # GLM is a header-only library. 
 # 
  
-SET( GLM_INCLUDE glm/glm.hpp 
-        ${CROSS_PLATFORM_PATHS}/glm
+SET( GLM_INCLUDE ${CROSS_PLATFORM_PATHS}
         CACHE PATH
         "The directory where glm/glm.hpp resides") 
  

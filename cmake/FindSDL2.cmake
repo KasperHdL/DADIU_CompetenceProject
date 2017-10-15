@@ -69,7 +69,7 @@ message("<FindSDL2.cmake>")
 
 
 SET(SDL2_SEARCH_PATHS
-        ${PLATFORM_PATHS}/SDL2
+		${PLATFORM_PATHS}/SDL2
 		~/Library/Frameworks
 		/Library/Frameworks
 		/usr/local
@@ -103,10 +103,10 @@ IF(NOT SDL2_BUILDING_LIBRARY)
 		# seem to provide SDL2main for compatibility even though they don't
 		# necessarily need it.
 		FIND_LIBRARY(SDL2MAIN_LIBRARY
-				NAMES SDL2main
+				NAMES SDL2main SDL2main.lib
 				HINTS
 				$ENV{SDL2DIR}
-				PATH_SUFFIXES lib64 lib
+				PATH_SUFFIXES lib64 lib lib/x64 lib/x86
 				PATHS ${SDL2_SEARCH_PATHS}
 				)
 	ENDIF(NOT ${SDL2_INCLUDE_DIR} MATCHES ".framework")

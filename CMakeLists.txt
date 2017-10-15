@@ -41,37 +41,26 @@ ELSE (APPLE)
 
     IF(UNIX)
         find_package(GLEW REQUIRED)
-        include_directories(${GLEW_INCLUDE})
+        include_directories(${GLEW_INCLUDE_DIR})
     ELSE(UNIX)
         find_package(glew REQUIRED) 
-        include_directories(${GLEW_INCLUDE})
+        include_directories(${GLEW_INCLUDE_DIR})
 
     ENDIF(UNIX)
 
     SET(EXTRA_LIBS ${EXTRA_LIBS} ${OPENGL_LIBRARY} ${GLEW_LIBRARY})
 ENDIF (APPLE)
 
-#set(GLM_INCLUDE ${CROSS_PLATFORM_PATHS}/glm CACHE PATH "Location of GLM Header")
-find_package(GLM REQUIRED)
-include_directories(${GLM_INCLUDE})
-
-
-#set(SDL2_INCLUDE_DIR ${PLATFORM_PATHS}/SDL2/include)
-#set(SDL2_LIBRARY ${PLATFORM_PATHS}/SDL2/lib/libSDL2main.a)
-
 find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIR})
-
 find_package(SDL2_IMAGE REQUIRED)
-include_directories(${SDL2_IMAGE_INCLUDE_DIRS})
-
 find_package(SDL2_MIXER REQUIRED)
-include_directories(${SDL2_MIXER_INCLUDE_DIRS})
+include_directories(${SDL2_INCLUDE_DIR}) #sdl2_image and mixer is placed in the same sdl2 include folder
+
 
 include_directories(include)
 include_directories(src)
 
-SET(EXTRA_LIBS ${EXTRA_LIBS} ${SDL2_LIBRARY} ${SDL2_MIXER_LIBRARY} ${SDL2_IMAGE_LIBRARY} ${GLM_LIBRARY})
+SET(EXTRA_LIBS ${EXTRA_LIBS} ${SDL2_LIBRARY} ${SDL2_MIXER_LIBRARY} ${SDL2_IMAGE_LIBRARY})
 
 
 IF(WIN32)
@@ -99,9 +88,16 @@ target_link_libraries(Demo ${EXTRA_LIBS})
 file(COPY data DESTINATION .)
 
 IF (WIN32)
-    SET(SDL2_dll "" CACHE STRING "Where the SDL2.dll can be found")
-    SET(SDL2_image_lib_path "" CACHE PATH "Where the SDL2_image.dll can be found")
-    SET(DLLFileList "${SDL2_image_lib_path}/SDL2_image.dll" "${SDL2_image_lib_path}/libjpeg-9.dll" "${SDL2_image_lib_path}/libpng16-16.dll" "${SDL2_image_lib_path}/libtiff-5.dll" "${SDL2_image_lib_path}/libwebp-4.dll" "${SDL2_image_lib_path}/zlib1.dll" ${SDL2_dll})
+    if(ARCH STREQUAL "x86")
+        SET(SDL2_DLL_FOLDER "${PLATFORM_PATHS}/SDL2/lib/x86")
+    else()
+        SET(SDL2_DLL_FOLDER "${PLATFORM_PATHS}/SDL2/lib/x64")
+    endif()
+
+    file(GLOB DLLFileList
+        "${SDL2_DLL_FOLDER}/*.dll"
+    )
+
     file(COPY ${DLLFileList} DESTINATION Debug)
     file(COPY ${DLLFileList} DESTINATION Release)
 ELSE(WIN32)

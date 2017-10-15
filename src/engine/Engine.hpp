@@ -5,7 +5,8 @@
 
 
 //sdl
-#include "SDL.h"
+#include <SDL.h>
+#undef main
 
 //glm
 #include <glm/glm.hpp>

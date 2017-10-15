@@ -41,7 +41,8 @@ if (WIN32)
           NAMES
               glew GLEW glew32s glew32
           PATHS
-              ${PLATFORM_PATHS}/glew/lib
+            ${PLATFORM_PATHS}/glew/lib
+            ${PLATFORM_PATHS}/glew/lib/Release/win32
               ${GLEW_LOCATION}/lib
               ${GLEW_LOCATION}/lib/x86
               ${GLEW_LOCATION}/lib/win32
@@ -68,6 +69,7 @@ if (WIN32)
               glew GLEW glew32s glew32
           PATHS
               ${PLATFORM_PATHS}/glew/lib/x64
+              ${PLATFORM_PATHS}/glew/lib/Release/x64
               ${GLEW_LOCATION}/lib/x64
               ${GLEW_LOCATION}/lib/Release/x64
               ${GLEW_LOCATION}/lib/Release MX/x64

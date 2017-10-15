@@ -28,8 +28,9 @@ void Input::update(){
                 quit = true;
             break;
             case SDL_MOUSEMOTION:
-                _current_mouse.x = e.motion.x;
-                _current_mouse.y = e.motion.y;
+				//@TODO(KASPER) e.motion.x is a Sin32
+                _current_mouse.x = (float)e.motion.x;
+                _current_mouse.y = (float)e.motion.y;
             break;
         }
     }
