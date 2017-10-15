@@ -16,7 +16,7 @@ if (WIN32)
         NAMES
             GL/glew.h
         PATHS
-            ${LIBRARY_SEARCH_PATHS}/glew/include
+            ${CROSS_PLATFORM_PATHS}/glew/include
             ${GLEW_LOCATION}/include
             $ENV{GLEW_LOCATION}/include
             $ENV{PROGRAMFILES}/GLEW/include
@@ -28,7 +28,7 @@ if (WIN32)
         NAMES
             glew.c
         PATHS
-            ${LIBRARY_SEARCH_PATHS}/glew/src
+            ${CROSS_PLATFORM_PATHS}/glew/src
             ${GLEW_LOCATION}/src
             $ENV{GLEW_LOCATION}/src
             $ENV{PROGRAMFILES}/GLEW/src
@@ -41,7 +41,7 @@ if (WIN32)
           NAMES
               glew GLEW glew32s glew32
           PATHS
-            ${LIBRARY_SEARCH_PATHS}/glew/lib
+              ${PLATFORM_PATHS}/glew/lib
               ${GLEW_LOCATION}/lib
               ${GLEW_LOCATION}/lib/x86
               ${GLEW_LOCATION}/lib/win32
@@ -67,7 +67,7 @@ if (WIN32)
           NAMES
               glew GLEW glew32s glew32
           PATHS
-            ${LIBRARY_SEARCH_PATHS}/glew/lib/x64
+              ${PLATFORM_PATHS}/glew/lib/x64
               ${GLEW_LOCATION}/lib/x64
               ${GLEW_LOCATION}/lib/Release/x64
               ${GLEW_LOCATION}/lib/Release MX/x64
@@ -92,7 +92,7 @@ if (${CMAKE_HOST_UNIX})
         NAMES
             GL/glew.h
         PATHS
-            ${LIBRARY_SEARCH_PATHS}/glew/include
+            ${CROSS_PLATFORM_PATHS}/glew/include
             ${GLEW_LOCATION}/include
             $ENV{GLEW_LOCATION}/include
             /usr/include
