@@ -21,17 +21,17 @@ endif()
 #########################################################
 
 IF(WIN32)
-    SET(PLATFORM_PATHS ${CMAKE_SOURCE_DIR}/libraries/windows/)
+    SET(PLATFORM_PATHS ${CMAKE_SOURCE_DIR}/libraries/windows)
     SET(LIBRARY_EXTENSION "lib")
 ELSEIF(APPLE)
-    SET(PLATFORM_PATHS ${CMAKE_SOURCE_DIR}/libraries/macos/)
+    SET(PLATFORM_PATHS ${CMAKE_SOURCE_DIR}/libraries/macos)
     SET(LIBRARY_EXTENSION "dylib")
 ELSEIF(UNIX)
-    SET(PLATFORM_PATHS ${CMAKE_SOURCE_DIR}/libraries/linux/)
+    SET(PLATFORM_PATHS ${CMAKE_SOURCE_DIR}/libraries/linux)
     SET(LIBRARY_EXTENSION "so")
 ENDIF()
 
-SET(CROSS_PLATFORM_PATHS ${CMAKE_SOURCE_DIR}/libraries/multi/)
+SET(CROSS_PLATFORM_PATHS ${CMAKE_SOURCE_DIR}/libraries/multi)
 
 
 IF(APPLE)
@@ -68,8 +68,11 @@ include_directories(${SDL2_INCLUDE_DIR}) #sdl2_image and mixer is placed in the 
 
 ##### OPENVR
 
-
-SET(OPENVR_LIBRARY "${PLATFORM_PATHS}/openvr/${PLATFORM_ARCH}/libopenvr_api.${LIBRARY_EXTENSION}")
+if(WIN32)
+    SET(OPENVR_LIBRARY "${PLATFORM_PATHS}/openvr/${PLATFORM_ARCH}/openvr_api.${LIBRARY_EXTENSION}")
+else()
+    SET(OPENVR_LIBRARY "${PLATFORM_PATHS}/openvr/${PLATFORM_ARCH}/libopenvr_api.${LIBRARY_EXTENSION}")
+endif()
 
 include_directories(${CROSS_PLATFORM_PATHS}/openvr/headers)
 
@@ -104,7 +107,7 @@ IF (WIN32)
         "${SDL2_DLL_FOLDER}/*.dll"
     )
 
-    set(DLLFileList ${DLLFileList} "{PLATFORM_PATHS}/openvr/${PLATFORM_ARCH}/openvr_api.dll")
+    set(DLLFileList ${DLLFileList} "${PLATFORM_PATHS}/openvr/${PLATFORM_ARCH}/openvr_api.dll")
 
 
     file(COPY ${DLLFileList} DESTINATION Debug)

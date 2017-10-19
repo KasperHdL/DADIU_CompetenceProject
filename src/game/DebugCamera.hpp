@@ -66,16 +66,18 @@ class DebugCamera : public Entity{
             transform->rotation.x = clamp<float>(transform->rotation.x, -rot_max_x, rot_max_x);
             transform->rotation.y += delta_mouse.x * rotation_speed * dt;
 
-            //update camera
-            camera->view_transform = (eulerAngleX(transform->rotation.x) * eulerAngleY(transform->rotation.y)) * glm::translate(mat4(), -transform->position);
-            camera->transform->position = transform->position;
-            camera->transform->rotation = transform->rotation;
-
+			update_camera();
 
         }
  
         ~DebugCamera(){ 
  
         } 
+
+		void update_camera() {
+			camera->view_transform = (eulerAngleX(transform->rotation.x) * eulerAngleY(transform->rotation.y)) * glm::translate(mat4(), -transform->position);
+			camera->transform->position = transform->position;
+			camera->transform->rotation = transform->rotation;
+		}
  
 }; 

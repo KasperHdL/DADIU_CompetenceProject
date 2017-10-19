@@ -22,7 +22,7 @@ int Engine::initialize(Game* game){
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
+	
 
     // Create an application window with the following settings:
     window = SDL_CreateWindow(
@@ -42,7 +42,8 @@ int Engine::initialize(Game* game){
     }
 
     Renderer renderer;
-    renderer.initialize(window, screen_width, screen_height);
+    bool success = renderer.initialize(window, screen_width, screen_height);
+	if (!success) return false;
 
     game->initialize(this);
 
@@ -65,7 +66,7 @@ int Engine::initialize(Game* game){
         update(delta_time);
         debug->update_timer.stop();
 
-        renderer.render(delta_time);
+        renderer.RenderFrame(delta_time);
     }
 
 
