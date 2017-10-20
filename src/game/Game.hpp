@@ -40,6 +40,7 @@ class Game{
             debug_camera = new DebugCamera();
             debug_camera->transform->position = vec3(1.1,6.4,12.5);
             debug_camera->transform->rotation = vec3(0.55,6.25,0);
+			debug_camera->update_camera();
 
             int playarea = 5;
 
