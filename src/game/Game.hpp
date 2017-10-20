@@ -17,7 +17,7 @@
 class Game{
     public:
         Engine* engine;
-        DebugCamera* debug_camera;
+       // DebugCamera* debug_camera;
 
         Snake* snake;
         Fruit* fruit;
@@ -37,10 +37,10 @@ class Game{
         void initialize(Engine* engine){
             this->engine = engine;
 
-            debug_camera = new DebugCamera();
-            debug_camera->transform->position = vec3(1.1,6.4,12.5);
-            debug_camera->transform->rotation = vec3(0.55,6.25,0);
-			debug_camera->update_camera();
+            //debug_camera = new DebugCamera();
+            //debug_camera->transform->position = vec3(1.1,6.4,12.5);
+            //debug_camera->transform->rotation = vec3(0.55,6.25,0);
+			//debug_camera->update_camera();
 
             int playarea = 5;
 
@@ -63,7 +63,7 @@ class Game{
         }
 
         void update(float delta_time){
-            debug_camera->update(delta_time);
+            //debug_camera->update(delta_time);
 
             if(snake->is_dead){
                 restart_timer += delta_time;

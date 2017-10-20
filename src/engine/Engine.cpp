@@ -2,6 +2,7 @@
 
 #include <game/Game.hpp>
 #include <debug/DebugInterface.hpp>
+#include <engine/renderer/VRRenderer.hpp>
 
 
 Engine::Engine(int screen_width, int screen_height){
@@ -41,14 +42,14 @@ int Engine::initialize(Game* game){
         return 1;
     }
 
-    Renderer renderer;
-    renderer.initialize(window, screen_width, screen_height);
+	CMainApplication *pMainApplication = new CMainApplication();
+	pMainApplication->BInit(window);
 
     game->initialize(this);
 
-    debug = new DebugInterface();
-    debug->initialize(window, game);
-    renderer.debug = debug;
+
+	SDL_StartTextInput();
+	SDL_ShowCursor(SDL_DISABLE);
 
     Uint64 NOW = SDL_GetPerformanceCounter();
     Uint64 LAST = 0;
@@ -61,17 +62,19 @@ int Engine::initialize(Game* game){
         delta_time = clamp(((NOW - LAST) / (float)SDL_GetPerformanceFrequency() ),0.0f,1.0f);
         time += delta_time;
 
-        debug->update_timer.start();
+		input.quit = pMainApplication->HandleInput();
         update(delta_time);
-        debug->update_timer.stop();
 
-        renderer.render(delta_time);
+
+
+		pMainApplication->RenderFrame();
     }
 
+	SDL_StopTextInput();
 
     AssetManager::cleanup();
-    delete debug;
 
+	pMainApplication->Shutdown();
     // Close and destroy the window
     SDL_DestroyWindow(window);
 
@@ -87,10 +90,7 @@ void Engine::update(float delta_time){
     
     game->update(delta_time);
 
-    debug->update(delta_time);
-    if(debug->hotload_shader){
-        AssetManager::update();
-    }
+    AssetManager::update();
 
 }
 

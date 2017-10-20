@@ -106,7 +106,7 @@ class DebugInterface{
                 if(menu){
                     ImGui::Begin("Menu");
                         ImGui::Text("Move on [WASD], [Space] and [Shift]");
-                        ImGui::Checkbox("Freeze Camera [F]", &game->debug_camera->freeze);
+//                        ImGui::Checkbox("Freeze Camera [F]", &game->debug_camera->freeze);
                         ImGui::Separator();
 
                         ImGui::Checkbox("Debug         [Esc]", &enabled);

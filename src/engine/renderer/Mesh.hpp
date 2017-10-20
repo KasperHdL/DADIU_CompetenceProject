@@ -103,7 +103,7 @@ public:
     }
 
     void bind(){
-//        glBindVertexArray(vertex_array_object);
+        glBindVertexArray(vertex_array_object);
 
         glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_id);
         set_vertex_attribute_pointers();
