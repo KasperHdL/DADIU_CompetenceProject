@@ -81,53 +81,21 @@ bool Renderer::initialize(SDL_Window* window, int screen_width, int screen_heigh
 
     ambient_light = vec4(0.2f);
 
-    //Shader setup
-    {
-		/////////
-		//LAMBERT
-		/////////
-
-        scene_shader = AssetManager::get_shader("shaders/standard");
-
-		scene_shader->init_uniform("model"        , Shader::Uniform_Type::Mat4);
-		scene_shader->init_uniform("view"         , Shader::Uniform_Type::Mat4);
-		scene_shader->init_uniform("projection"   , Shader::Uniform_Type::Mat4);
-		scene_shader->init_uniform("normalMat"    , Shader::Uniform_Type::Mat3);
-
-		scene_shader->init_uniform("ambientLight" , Shader::Uniform_Type::Vec4);
-		scene_shader->init_uniform("color"        , Shader::Uniform_Type::Vec4);
-		scene_shader->init_uniform("specularity"  , Shader::Uniform_Type::Float);
 
 
-        for(int i = 0; i < 4; i++){
-			scene_shader->init_uniform("lightPosType[" + to_string(i) + "]", Shader::Uniform_Type::Vec4);
-			scene_shader->init_uniform("lightColorRange[" + to_string(i) + "]", Shader::Uniform_Type::Vec4);
-        }
-
-		//////////
-		//WINDOW
-		//////////
-
-		window_shader = AssetManager::get_shader("shaders/window");
-		window_shader->init_uniform("mytexture", Shader::Uniform_Type::Texture);
+	// cube array
+	m_iSceneVolumeWidth = 20;
+	m_iSceneVolumeHeight = 20;
+	m_iSceneVolumeDepth = 20;
 
 
-		//////////
-		//WINDOW
-		//////////
-
-		test_shader = AssetManager::get_shader("shaders/scene");
-		test_shader->init_uniform("color", Shader::Uniform_Type::Vec4);
-		test_shader->init_uniform("matrix", Shader::Uniform_Type::Mat4);
-
-
-    }
-
-
-
+	CreateAllShaders();
+	
+	SetupScene();
 	SetupCameras();
 	SetupStereoRenderTargets();
 	SetupCompanionWindow();
+	SetupRenderModels();
 	
 	vr::EVRInitError peError = vr::VRInitError_None;
 
@@ -343,6 +311,7 @@ void Renderer::RenderFrame(float delta_time)
 
 	if (m_pHMD)
 	{
+		RenderControllerAxes();
 		_render_stereo_targets();
 		RenderCompanionWindow();
 
@@ -372,7 +341,7 @@ void Renderer::RenderCompanionWindow()
 	glViewport(0, 0, screen_width, screen_height);
 
 	glBindVertexArray(m_unCompanionWindowVAO);
-	window_shader->use();
+	glUseProgram(m_unCompanionWindowProgramID);
 
 	// render left eye (first half of index array )
 	glBindTexture(GL_TEXTURE_2D, left_eye_description.resolve_texture_id);
@@ -458,9 +427,24 @@ void Renderer::RenderScene(vr::Hmd_Eye nEye) {
 		current_projection_matrix = m_mat4ProjectionRight;
 	}
 
-	/*
+
+	glUseProgram(m_unSceneProgramID);
+	glUniformMatrix4fv(m_nSceneMatrixLocation, 1, GL_FALSE, glm::value_ptr(GetCurrentViewProjectionMatrix(nEye)));
+	glBindVertexArray(m_unSceneVAO);
+	glBindTexture(GL_TEXTURE_2D, m_iTexture);
+	glDrawArrays(GL_TRIANGLES, 0, m_uiVertcount);
+	glBindVertexArray(0);
+
+
+	// draw the controller axis lines
+	glUseProgram(m_unControllerTransformProgramID);
+	glUniformMatrix4fv(m_nControllerMatrixLocation, 1, GL_FALSE, glm::value_ptr(GetCurrentViewProjectionMatrix(nEye)));
+	glBindVertexArray(m_unControllerVAO);
+	glDrawArrays(GL_LINES, 0, m_uiControllerVertcount);
+	glBindVertexArray(0);
+
 	// ----- Render Model rendering -----
-	rendermodel_shader->use();
+	glUseProgram(m_unRenderModelProgramID);
 
 	for (uint32_t unTrackedDevice = 0; unTrackedDevice < vr::k_unMaxTrackedDeviceCount; unTrackedDevice++)
 	{
@@ -471,16 +455,12 @@ void Renderer::RenderScene(vr::Hmd_Eye nEye) {
 		if (!pose.bPoseIsValid)
 			continue;
 
-		rendermodel_shader->
-		const Matrix4 & matDeviceToTracking = m_rmat4DevicePose[unTrackedDevice];
-		Matrix4 matMVP = GetCurrentViewProjectionMatrix(nEye) * matDeviceToTracking;
-		glUniformMatrix4fv(m_nRenderModelMatrixLocation, 1, GL_FALSE, matMVP.get());
+		mat4 matMVP = GetCurrentViewProjectionMatrix(nEye) * m_rmat4DevicePose[unTrackedDevice];
+		glUniformMatrix4fv(m_nRenderModelMatrixLocation, 1, GL_FALSE, glm::value_ptr(matMVP));
 
 		m_rTrackedDeviceToRenderModel[unTrackedDevice]->Draw();
 	}
-	*/
 
-	_render_scene();
 }
 
 ///////////
@@ -735,7 +715,7 @@ std::string GetTrackedDeviceString(vr::IVRSystem *pHmd, vr::TrackedDeviceIndex_t
 //-----------------------------------------------------------------------------
 // Purpose: Finds a render model we've already loaded or loads a new one
 //-----------------------------------------------------------------------------
-CGLRenderModel* Renderer::FindOrLoadRenderModel(const char *pchRenderModelName)
+CGLRenderModel* Renderer::FindOrLoadRenderModel(const char* pchRenderModelName)
 {
 	CGLRenderModel *pRenderModel = NULL;
 	for (std::vector< CGLRenderModel * >::iterator i = m_vecRenderModels.begin(); i != m_vecRenderModels.end(); i++)
@@ -844,6 +824,338 @@ void Renderer::SetupRenderModels()
 	}
 
 }
+
+bool Renderer::CreateAllShaders()
+{
+	m_unSceneProgramID = CompileGLShader(
+		"Scene",
+
+		// Vertex Shader
+		"#version 410\n"
+		"uniform mat4 matrix;\n"
+		"layout(location = 0) in vec4 position;\n"
+		"layout(location = 1) in vec2 v2UVcoordsIn;\n"
+		"layout(location = 2) in vec3 v3NormalIn;\n"
+		"out vec2 v2UVcoords;\n"
+		"void main()\n"
+		"{\n"
+		"	v2UVcoords = v2UVcoordsIn;\n"
+		"	gl_Position = matrix * position;\n"
+		"}\n",
+
+		// Fragment Shader
+		"#version 410 core\n"
+		"uniform sampler2D mytexture;\n"
+		"in vec2 v2UVcoords;\n"
+		"out vec4 outputColor;\n"
+		"void main()\n"
+		"{\n"
+		"   outputColor = vec4(1,1,1,1);//texture(mytexture, v2UVcoords);\n"
+		"}\n"
+	);
+	m_nSceneMatrixLocation = glGetUniformLocation(m_unSceneProgramID, "matrix");
+	if (m_nSceneMatrixLocation == -1)
+	{
+		printf("Unable to find matrix uniform in scene shader\n");
+		return false;
+	}
+
+	m_unControllerTransformProgramID = CompileGLShader(
+		"Controller",
+
+		// vertex shader
+		"#version 410\n"
+		"uniform mat4 matrix;\n"
+		"layout(location = 0) in vec4 position;\n"
+		"layout(location = 1) in vec3 v3ColorIn;\n"
+		"out vec4 v4Color;\n"
+		"void main()\n"
+		"{\n"
+		"	v4Color.xyz = v3ColorIn; v4Color.a = 1.0;\n"
+		"	gl_Position = matrix * position;\n"
+		"}\n",
+
+		// fragment shader
+		"#version 410\n"
+		"in vec4 v4Color;\n"
+		"out vec4 outputColor;\n"
+		"void main()\n"
+		"{\n"
+		"   outputColor = v4Color;\n"
+		"}\n"
+	);
+	m_nControllerMatrixLocation = glGetUniformLocation(m_unControllerTransformProgramID, "matrix");
+	if (m_nControllerMatrixLocation == -1)
+	{
+		printf("Unable to find matrix uniform in controller shader\n");
+		return false;
+	}
+
+	m_unRenderModelProgramID = CompileGLShader(
+		"render model",
+
+		// vertex shader
+		"#version 410\n"
+		"uniform mat4 matrix;\n"
+		"layout(location = 0) in vec4 position;\n"
+		"layout(location = 1) in vec3 v3NormalIn;\n"
+		"layout(location = 2) in vec2 v2TexCoordsIn;\n"
+		"out vec2 v2TexCoord;\n"
+		"void main()\n"
+		"{\n"
+		"	v2TexCoord = v2TexCoordsIn;\n"
+		"	gl_Position = matrix * vec4(position.xyz, 1);\n"
+		"}\n",
+
+		//fragment shader
+		"#version 410 core\n"
+		"uniform sampler2D diffuse;\n"
+		"in vec2 v2TexCoord;\n"
+		"out vec4 outputColor;\n"
+		"void main()\n"
+		"{\n"
+		"   outputColor = texture( diffuse, v2TexCoord);\n"
+		"}\n"
+
+	);
+	m_nRenderModelMatrixLocation = glGetUniformLocation(m_unRenderModelProgramID, "matrix");
+	if (m_nRenderModelMatrixLocation == -1)
+	{
+		printf("Unable to find matrix uniform in render model shader\n");
+		return false;
+	}
+
+	m_unCompanionWindowProgramID = CompileGLShader(
+		"CompanionWindow",
+
+		// vertex shader
+		"#version 410 core\n"
+		"layout(location = 0) in vec4 position;\n"
+		"layout(location = 1) in vec2 v2UVIn;\n"
+		"noperspective out vec2 v2UV;\n"
+		"void main()\n"
+		"{\n"
+		"	v2UV = v2UVIn;\n"
+		"	gl_Position = position;\n"
+		"}\n",
+
+		// fragment shader
+		"#version 410 core\n"
+		"uniform sampler2D mytexture;\n"
+		"noperspective in vec2 v2UV;\n"
+		"out vec4 outputColor;\n"
+		"void main()\n"
+		"{\n"
+		"		outputColor = texture(mytexture, v2UV);\n"
+		"}\n"
+	);
+
+	return m_unSceneProgramID != 0
+		&& m_unControllerTransformProgramID != 0
+		&& m_unRenderModelProgramID != 0
+		&& m_unCompanionWindowProgramID != 0;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Compiles a GL shader program and returns the handle. Returns 0 if
+//			the shader couldn't be compiled for some reason.
+//-----------------------------------------------------------------------------
+GLuint Renderer::CompileGLShader(const char *pchShaderName, const char *pchVertexShader, const char *pchFragmentShader)
+{
+	GLuint unProgramID = glCreateProgram();
+
+	GLuint nSceneVertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(nSceneVertexShader, 1, &pchVertexShader, NULL);
+	glCompileShader(nSceneVertexShader);
+
+	GLint vShaderCompiled = GL_FALSE;
+	glGetShaderiv(nSceneVertexShader, GL_COMPILE_STATUS, &vShaderCompiled);
+	if (vShaderCompiled != GL_TRUE)
+	{
+		printf("%s - Unable to compile vertex shader %d!\n", pchShaderName, nSceneVertexShader);
+		glDeleteProgram(unProgramID);
+		glDeleteShader(nSceneVertexShader);
+		return 0;
+	}
+	glAttachShader(unProgramID, nSceneVertexShader);
+	glDeleteShader(nSceneVertexShader); // the program hangs onto this once it's attached
+
+	GLuint  nSceneFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(nSceneFragmentShader, 1, &pchFragmentShader, NULL);
+	glCompileShader(nSceneFragmentShader);
+
+	GLint fShaderCompiled = GL_FALSE;
+	glGetShaderiv(nSceneFragmentShader, GL_COMPILE_STATUS, &fShaderCompiled);
+	if (fShaderCompiled != GL_TRUE)
+	{
+		printf("%s - Unable to compile fragment shader %d!\n", pchShaderName, nSceneFragmentShader);
+		glDeleteProgram(unProgramID);
+		glDeleteShader(nSceneFragmentShader);
+		return 0;
+	}
+
+	glAttachShader(unProgramID, nSceneFragmentShader);
+	glDeleteShader(nSceneFragmentShader); // the program hangs onto this once it's attached
+
+	glLinkProgram(unProgramID);
+
+	GLint programSuccess = GL_TRUE;
+	glGetProgramiv(unProgramID, GL_LINK_STATUS, &programSuccess);
+	if (programSuccess != GL_TRUE)
+	{
+		printf("%s - Error linking program %d!\n", pchShaderName, unProgramID);
+		glDeleteProgram(unProgramID);
+		return 0;
+	}
+
+	glUseProgram(unProgramID);
+	glUseProgram(0);
+
+	return unProgramID;
+}
+
+
+
+
+//-----------------------------------------------------------------------------
+// Purpose: create a sea of cubes
+//-----------------------------------------------------------------------------
+void Renderer::SetupScene()
+{
+	if (!m_pHMD)
+		return;
+
+	std::vector<float> vertdataarray;
+
+	mat4 matScale = glm::scale(mat4(), vec3(m_fScale, m_fScale, m_fScale));
+	mat4 matTransform = glm::translate(mat4(), vec3(
+		-((float)m_iSceneVolumeWidth * m_fScaleSpacing) / 2.f,
+		-((float)m_iSceneVolumeHeight * m_fScaleSpacing) / 2.f,
+		-((float)m_iSceneVolumeDepth * m_fScaleSpacing) / 2.f)
+	);
+
+	mat4 mat = matScale * matTransform;
+	vec3 pos;
+
+	for (int z = 0; z< m_iSceneVolumeDepth; z++)
+	{
+		for (int y = 0; y< m_iSceneVolumeHeight; y++)
+		{
+			for (int x = 0; x< m_iSceneVolumeWidth; x++)
+			{
+				AddCubeToScene(mat, vertdataarray);
+				pos = vec3(m_fScaleSpacing, 0, 0);
+				mat = glm::translate(mat , pos);
+			}
+			pos = vec3(-((float)m_iSceneVolumeWidth) * m_fScaleSpacing, m_fScaleSpacing, 0);
+			mat = glm::translate(mat, pos);
+		}
+		pos = vec3(0, -((float)m_iSceneVolumeHeight) * m_fScaleSpacing, m_fScaleSpacing);
+		mat = glm::translate(mat, pos);
+	}
+	m_uiVertcount = vertdataarray.size() / 5;
+
+	glGenVertexArrays(1, &m_unSceneVAO);
+	glBindVertexArray(m_unSceneVAO);
+
+	glGenBuffers(1, &m_glSceneVertBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, m_glSceneVertBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertdataarray.size(), &vertdataarray[0], GL_STATIC_DRAW);
+
+	GLsizei stride = sizeof(VertexDataScene);
+	uintptr_t offset = 0;
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (const void *)offset);
+
+	offset += sizeof(vec3);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (const void *)offset);
+
+	glBindVertexArray(0);
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void Renderer::AddCubeVertex(float fl0, float fl1, float fl2, float fl3, float fl4, std::vector<float> &vertdata)
+{
+	vertdata.push_back(fl0);
+	vertdata.push_back(fl1);
+	vertdata.push_back(fl2);
+	vertdata.push_back(fl3);
+	vertdata.push_back(fl4);
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void Renderer::AddCubeToScene(mat4 mat, std::vector<float> &vertdata)
+{
+	// Matrix4 mat( outermat.data() );
+
+	vec4 A = mat * vec4(0, 0, 0, 1);
+	vec4 B = mat * vec4(1, 0, 0, 1);
+	vec4 C = mat * vec4(1, 1, 0, 1);
+	vec4 D = mat * vec4(0, 1, 0, 1);
+	vec4 E = mat * vec4(0, 0, 1, 1);
+	vec4 F = mat * vec4(1, 0, 1, 1);
+	vec4 G = mat * vec4(1, 1, 1, 1);
+	vec4 H = mat * vec4(0, 1, 1, 1);
+
+	// triangles instead of quads
+	AddCubeVertex(E.x, E.y, E.z, 0, 1, vertdata); //Front
+	AddCubeVertex(F.x, F.y, F.z, 1, 1, vertdata);
+	AddCubeVertex(G.x, G.y, G.z, 1, 0, vertdata);
+	AddCubeVertex(G.x, G.y, G.z, 1, 0, vertdata);
+	AddCubeVertex(H.x, H.y, H.z, 0, 0, vertdata);
+	AddCubeVertex(E.x, E.y, E.z, 0, 1, vertdata);
+
+	AddCubeVertex(B.x, B.y, B.z, 0, 1, vertdata); //Back
+	AddCubeVertex(A.x, A.y, A.z, 1, 1, vertdata);
+	AddCubeVertex(D.x, D.y, D.z, 1, 0, vertdata);
+	AddCubeVertex(D.x, D.y, D.z, 1, 0, vertdata);
+	AddCubeVertex(C.x, C.y, C.z, 0, 0, vertdata);
+	AddCubeVertex(B.x, B.y, B.z, 0, 1, vertdata);
+
+	AddCubeVertex(H.x, H.y, H.z, 0, 1, vertdata); //Top
+	AddCubeVertex(G.x, G.y, G.z, 1, 1, vertdata);
+	AddCubeVertex(C.x, C.y, C.z, 1, 0, vertdata);
+	AddCubeVertex(C.x, C.y, C.z, 1, 0, vertdata);
+	AddCubeVertex(D.x, D.y, D.z, 0, 0, vertdata);
+	AddCubeVertex(H.x, H.y, H.z, 0, 1, vertdata);
+
+	AddCubeVertex(A.x, A.y, A.z, 0, 1, vertdata); //Bottom
+	AddCubeVertex(B.x, B.y, B.z, 1, 1, vertdata);
+	AddCubeVertex(F.x, F.y, F.z, 1, 0, vertdata);
+	AddCubeVertex(F.x, F.y, F.z, 1, 0, vertdata);
+	AddCubeVertex(E.x, E.y, E.z, 0, 0, vertdata);
+	AddCubeVertex(A.x, A.y, A.z, 0, 1, vertdata);
+
+	AddCubeVertex(A.x, A.y, A.z, 0, 1, vertdata); //Left
+	AddCubeVertex(E.x, E.y, E.z, 1, 1, vertdata);
+	AddCubeVertex(H.x, H.y, H.z, 1, 0, vertdata);
+	AddCubeVertex(H.x, H.y, H.z, 1, 0, vertdata);
+	AddCubeVertex(D.x, D.y, D.z, 0, 0, vertdata);
+	AddCubeVertex(A.x, A.y, A.z, 0, 1, vertdata);
+
+	AddCubeVertex(F.x, F.y, F.z, 0, 1, vertdata); //Right
+	AddCubeVertex(B.x, B.y, B.z, 1, 1, vertdata);
+	AddCubeVertex(C.x, C.y, C.z, 1, 0, vertdata);
+	AddCubeVertex(C.x, C.y, C.z, 1, 0, vertdata);
+	AddCubeVertex(G.x, G.y, G.z, 0, 0, vertdata);
+	AddCubeVertex(F.x, F.y, F.z, 0, 1, vertdata);
+}
+
+
+
+
+
 
 
 

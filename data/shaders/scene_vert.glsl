@@ -10,6 +10,6 @@ out vec2 v2UVcoords;
 
 void main()
 {
-	v2UVcoords = v2UVcoordsIn;
+	v2UVcoords = v2UVcoordsIn.xy;
 	gl_Position = matrix * vec4(position,1);
 }

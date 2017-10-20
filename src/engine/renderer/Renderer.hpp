@@ -16,6 +16,25 @@
 #include <engine/renderer/Mesh.hpp>
 #include <engine/renderer/Light.hpp>
 
+class CGLRenderModel
+{
+public:
+	CGLRenderModel(const std::string & sRenderModelName);
+	~CGLRenderModel();
+
+	bool BInit(const vr::RenderModel_t & vrModel, const vr::RenderModel_TextureMap_t & vrDiffuseTexture);
+	void Cleanup();
+	void Draw();
+	const std::string & GetName() const { return m_sModelName; }
+
+private:
+	GLuint m_glVertBuffer;
+	GLuint m_glIndexBuffer;
+	GLuint m_glVertArray;
+	GLuint m_glTexture;
+	GLsizei m_unVertexCount;
+	std::string m_sModelName;
+};
 
 
 class Camera;
@@ -40,6 +59,7 @@ public:
     Shader* scene_shader;
 	Shader* window_shader;
 	Shader* test_shader;
+	Shader* rendermodel_shader;
 
     //OpenGL
     SDL_Window* window;
@@ -137,31 +157,58 @@ public:
 	void SetupCameras();
 	void SetupCompanionWindow();
 
-	void RenderCompanionWindow();
 	void RenderFrame(float delta_time);
 
-
-	vr::IVRRenderModels *m_pRenderModels;
-
-	vr::TrackedDevicePose_t m_rTrackedDevicePose[vr::k_unMaxTrackedDeviceCount];
-	mat4 m_rmat4DevicePose[vr::k_unMaxTrackedDeviceCount];
-	bool m_rbShowTrackedDevice[vr::k_unMaxTrackedDeviceCount];
-
-	std::vector< CGLRenderModel * > m_vecRenderModels;
-	CGLRenderModel *m_rTrackedDeviceToRenderModel[vr::k_unMaxTrackedDeviceCount];
-
-	
-
-	CGLRenderModel* FindOrLoadRenderModel(const char *pchRenderModelName);
-	void SetupRenderModelForTrackedDevice(vr::TrackedDeviceIndex_t unTrackedDeviceIndex);
-	void SetupRenderModels();
-	void ProcessVREvent(const vr::VREvent_t & event);
-
 	void RenderControllerAxes();
+	void RenderCompanionWindow();
+
+	bool CreateAllShaders();
+	bool SetupTexturemaps();
+	void SetupScene();
+
+	void AddCubeVertex(float fl0, float fl1, float fl2, float fl3, float fl4, std::vector<float> &vertdata);
+	void AddCubeToScene(mat4 mat, std::vector<float> &vertdata);
+
+
+	int m_iSceneVolumeWidth;
+	int m_iSceneVolumeHeight;
+	int m_iSceneVolumeDepth;
+	float m_fScaleSpacing;
+	float m_fScale;
+
+	GLuint m_iTexture;
+
+	unsigned int m_uiVertcount;
+
+	GLuint m_glSceneVertBuffer;
+	GLuint m_unSceneVAO;
 
 	GLuint m_glControllerVertBuffer;
 	GLuint m_unControllerVAO;
 	unsigned int m_uiControllerVertcount;
+
+
+	GLuint m_unSceneProgramID;
+	GLuint m_unCompanionWindowProgramID;
+	GLuint m_unControllerTransformProgramID;
+	GLuint m_unRenderModelProgramID;
+
+	GLint m_nSceneMatrixLocation;
+	GLint m_nControllerMatrixLocation;
+	GLint m_nRenderModelMatrixLocation;
+
+	//rendermodels
+	std::vector<CGLRenderModel*> m_vecRenderModels;
+	CGLRenderModel* m_rTrackedDeviceToRenderModel[vr::k_unMaxTrackedDeviceCount];
+
+	
+
+	CGLRenderModel* FindOrLoadRenderModel(const char* pchRenderModelName);
+	void SetupRenderModelForTrackedDevice(vr::TrackedDeviceIndex_t unTrackedDeviceIndex);
+	void SetupRenderModels();
+	void ProcessVREvent(const vr::VREvent_t & event);
+	GLuint CompileGLShader(const char *pchShaderName, const char *pchVertexShader, const char *pchFragmentShader);
+
 
 private:
 
@@ -172,24 +219,4 @@ private:
     void _render_entity(Entity* entity);
     void _render_pool(DynamicPool<Entity*> pool);
 	void _render_scene();
-};
-
-class CGLRenderModel
-{
-public:
-	CGLRenderModel(const std::string & sRenderModelName);
-	~CGLRenderModel();
-
-	bool BInit(const vr::RenderModel_t & vrModel, const vr::RenderModel_TextureMap_t & vrDiffuseTexture);
-	void Cleanup();
-	void Draw();
-	const std::string & GetName() const { return m_sModelName; }
-
-private:
-	GLuint m_glVertBuffer;
-	GLuint m_glIndexBuffer;
-	GLuint m_glVertArray;
-	GLuint m_glTexture;
-	GLsizei m_unVertexCount;
-	std::string m_sModelName;
 };
