@@ -42,13 +42,14 @@ int Engine::initialize(Game* game){
         return 1;
     }
 
-	CMainApplication *pMainApplication = new CMainApplication();
-	pMainApplication->BInit(window);
+	VRRenderer *vr_renderer = new VRRenderer();
+	vr_renderer->BInit(window);
+
+	input.vr_hmd = vr_renderer->m_pHMD;
 
     game->initialize(this);
 
 
-	SDL_StartTextInput();
 	SDL_ShowCursor(SDL_DISABLE);
 
     Uint64 NOW = SDL_GetPerformanceCounter();
@@ -62,19 +63,19 @@ int Engine::initialize(Game* game){
         delta_time = clamp(((NOW - LAST) / (float)SDL_GetPerformanceFrequency() ),0.0f,1.0f);
         time += delta_time;
 
-		input.quit = pMainApplication->HandleInput();
+		vr_renderer->HandleInput();
         update(delta_time);
 
 
 
-		pMainApplication->RenderFrame();
+		vr_renderer->RenderFrame();
     }
 
 	SDL_StopTextInput();
 
     AssetManager::cleanup();
 
-	pMainApplication->Shutdown();
+	vr_renderer->Shutdown();
     // Close and destroy the window
     SDL_DestroyWindow(window);
 

@@ -19,9 +19,9 @@ class SnakeTail : public Entity{
             name = "SnakeTail";
 
             transform->position = vec3(0);
-            transform->scale = vec3(0.5f);
+            transform->scale = vec3(0.1f);
 
-            set_mesh_as_cube();
+			set_mesh_as_sphere();
 
             color = vec4(0,1,0,1);
             specularity = 10;

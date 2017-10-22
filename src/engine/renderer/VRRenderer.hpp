@@ -34,6 +34,9 @@
 #include <engine/God.hpp>
 #include <engine/utils/AssetManager.hpp>
 #include <engine/renderer/Mesh.hpp>
+#include <engine/Input.hpp>
+
+#include "glm/glm.hpp"
 
 
 #if defined(POSIX)
@@ -57,11 +60,11 @@ void ThreadSleep(unsigned long nMilliseconds)
 #endif
 }
 
-class CGLRenderModel
+class VRRenderModel
 {
 public:
-	CGLRenderModel(const std::string & sRenderModelName);
-	~CGLRenderModel();
+	VRRenderModel(const std::string & sRenderModelName);
+	~VRRenderModel();
 
 	bool BInit(const vr::RenderModel_t & vrModel, const vr::RenderModel_TextureMap_t & vrDiffuseTexture);
 	void Cleanup();
@@ -82,11 +85,11 @@ static bool g_bPrintf = true;
 //-----------------------------------------------------------------------------
 // Purpose:
 //------------------------------------------------------------------------------
-class CMainApplication
+class VRRenderer
 {
 public:
-	CMainApplication();
-	virtual ~CMainApplication();
+	VRRenderer();
+	virtual ~VRRenderer();
 
 	bool BInit(SDL_Window* window);
 	bool BInitGL();
@@ -97,7 +100,7 @@ public:
 	void Shutdown();
 
 	void RunMainLoop();
-	bool HandleInput();
+	void HandleInput();
 	void ProcessVREvent(const vr::VREvent_t & event);
 	void RenderFrame();
 
@@ -129,7 +132,7 @@ public:
 	bool CreateAllShaders();
 
 	void SetupRenderModelForTrackedDevice(vr::TrackedDeviceIndex_t unTrackedDeviceIndex);
-	CGLRenderModel *FindOrLoadRenderModel(const char *pchRenderModelName);
+	VRRenderModel *FindOrLoadRenderModel(const char *pchRenderModelName);
 
 	mat4 ConvertToMat4(Matrix4 matPose);
 
@@ -138,19 +141,20 @@ public:
 	mat4 current_projection_transform;
 
 	Shader* shader;
+
+	vr::IVRSystem *m_pHMD;
+	Matrix4 m_rmat4DevicePose[vr::k_unMaxTrackedDeviceCount];
+
 private:
 	bool m_bDebugOpenGL;
 	bool m_bVerbose;
 	bool m_bPerf;
 	bool m_bVblank;
 	bool m_bGlFinishHack;
-
-	vr::IVRSystem *m_pHMD;
 	vr::IVRRenderModels *m_pRenderModels;
 	std::string m_strDriver;
 	std::string m_strDisplay;
 	vr::TrackedDevicePose_t m_rTrackedDevicePose[vr::k_unMaxTrackedDeviceCount];
-	Matrix4 m_rmat4DevicePose[vr::k_unMaxTrackedDeviceCount];
 	bool m_rbShowTrackedDevice[vr::k_unMaxTrackedDeviceCount];
 
 private: // SDL bookkeeping
@@ -243,8 +247,8 @@ private: // OpenGL bookkeeping
 	uint32_t m_nRenderWidth;
 	uint32_t m_nRenderHeight;
 
-	std::vector< CGLRenderModel * > m_vecRenderModels;
-	CGLRenderModel *m_rTrackedDeviceToRenderModel[vr::k_unMaxTrackedDeviceCount];
+	std::vector< VRRenderModel * > m_vecRenderModels;
+	VRRenderModel *m_rTrackedDeviceToRenderModel[vr::k_unMaxTrackedDeviceCount];
 };
 
 //-----------------------------------------------------------------------------
@@ -268,7 +272,7 @@ void dprintf(const char *fmt, ...)
 //-----------------------------------------------------------------------------
 // Purpose: Constructor
 //-----------------------------------------------------------------------------
-CMainApplication::CMainApplication()
+VRRenderer::VRRenderer()
 	: m_pCompanionWindow(NULL)
 	, m_pContext(NULL)
 	, m_nCompanionWindowWidth(1280)
@@ -309,7 +313,7 @@ CMainApplication::CMainApplication()
 //-----------------------------------------------------------------------------
 // Purpose: Destructor
 //-----------------------------------------------------------------------------
-CMainApplication::~CMainApplication()
+VRRenderer::~VRRenderer()
 {
 	// work is done in Shutdown
 	dprintf("Shutdown");
@@ -337,7 +341,7 @@ std::string GetTrackedDeviceString(vr::IVRSystem *pHmd, vr::TrackedDeviceIndex_t
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-bool CMainApplication::BInit(SDL_Window* window)
+bool VRRenderer::BInit(SDL_Window* window)
 {
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
 	{
@@ -463,7 +467,7 @@ bool CMainApplication::BInit(SDL_Window* window)
 //          If failure occurred in a module other than shaders, the function
 //          may return true or throw an error. 
 //-----------------------------------------------------------------------------
-bool CMainApplication::BInitGL()
+bool VRRenderer::BInitGL()
 {
 	
 
@@ -485,7 +489,7 @@ bool CMainApplication::BInitGL()
 // Purpose: Initialize Compositor. Returns true if the compositor was
 //          successfully initialized, false otherwise.
 //-----------------------------------------------------------------------------
-bool CMainApplication::BInitCompositor()
+bool VRRenderer::BInitCompositor()
 {
 	vr::EVRInitError peError = vr::VRInitError_None;
 
@@ -502,7 +506,7 @@ bool CMainApplication::BInitCompositor()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CMainApplication::Shutdown()
+void VRRenderer::Shutdown()
 {
 	if (m_pHMD)
 	{
@@ -510,7 +514,7 @@ void CMainApplication::Shutdown()
 		m_pHMD = NULL;
 	}
 
-	for (std::vector< CGLRenderModel * >::iterator i = m_vecRenderModels.begin(); i != m_vecRenderModels.end(); i++)
+	for (std::vector< VRRenderModel * >::iterator i = m_vecRenderModels.begin(); i != m_vecRenderModels.end(); i++)
 	{
 		delete (*i);
 	}
@@ -580,55 +584,22 @@ void CMainApplication::Shutdown()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-bool CMainApplication::HandleInput()
+void VRRenderer::HandleInput()
 {
-	SDL_Event sdlEvent;
-	bool bRet = false;
-
-	while (SDL_PollEvent(&sdlEvent) != 0)
-	{
-		if (sdlEvent.type == SDL_QUIT)
-		{
-			bRet = true;
-		}
-		else if (sdlEvent.type == SDL_KEYDOWN)
-		{
-			if (sdlEvent.key.keysym.sym == SDLK_ESCAPE
-				|| sdlEvent.key.keysym.sym == SDLK_q)
-			{
-				bRet = true;
-			}
-			if (sdlEvent.key.keysym.sym == SDLK_c)
-			{
-				m_bShowCubes = !m_bShowCubes;
-			}
-		}
-	}
-
-	// Process SteamVR events
+		// Process SteamVR events
 	vr::VREvent_t event;
 	while (m_pHMD->PollNextEvent(&event, sizeof(event)))
 	{
 		ProcessVREvent(event);
 	}
 
-	// Process SteamVR controller state
-	for (vr::TrackedDeviceIndex_t unDevice = 0; unDevice < vr::k_unMaxTrackedDeviceCount; unDevice++)
-	{
-		vr::VRControllerState_t state;
-		if (m_pHMD->GetControllerState(unDevice, &state, sizeof(state)))
-		{
-			m_rbShowTrackedDevice[unDevice] = state.ulButtonPressed == 0;
-		}
-	}
-
-	return bRet;
+	
 }
 
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CMainApplication::RunMainLoop()
+void VRRenderer::RunMainLoop()
 {
 	bool bQuit = false;
 
@@ -637,7 +608,7 @@ void CMainApplication::RunMainLoop()
 
 	while (!bQuit)
 	{
-		bQuit = HandleInput();
+		HandleInput();
 
 		RenderFrame();
 	}
@@ -649,7 +620,7 @@ void CMainApplication::RunMainLoop()
 //-----------------------------------------------------------------------------
 // Purpose: Processes a single VR event
 //-----------------------------------------------------------------------------
-void CMainApplication::ProcessVREvent(const vr::VREvent_t & event)
+void VRRenderer::ProcessVREvent(const vr::VREvent_t & event)
 {
 	switch (event.eventType)
 	{
@@ -676,7 +647,7 @@ void CMainApplication::ProcessVREvent(const vr::VREvent_t & event)
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CMainApplication::RenderFrame()
+void VRRenderer::RenderFrame()
 {
 	// for now as fast as possible
 	if (m_pHMD)
@@ -737,7 +708,7 @@ void CMainApplication::RenderFrame()
 // Purpose: Compiles a GL shader program and returns the handle. Returns 0 if
 //			the shader couldn't be compiled for some reason.
 //-----------------------------------------------------------------------------
-GLuint CMainApplication::CompileGLShader(const char *pchShaderName, const char *pchVertexShader, const char *pchFragmentShader)
+GLuint VRRenderer::CompileGLShader(const char *pchShaderName, const char *pchVertexShader, const char *pchFragmentShader)
 {
 	GLuint unProgramID = glCreateProgram();
 
@@ -795,7 +766,7 @@ GLuint CMainApplication::CompileGLShader(const char *pchShaderName, const char *
 //-----------------------------------------------------------------------------
 // Purpose: Creates all the shaders used by HelloVR SDL
 //-----------------------------------------------------------------------------
-bool CMainApplication::CreateAllShaders()
+bool VRRenderer::CreateAllShaders()
 {
 	m_unSceneProgramID = CompileGLShader(
 		"Scene",
@@ -938,7 +909,7 @@ bool CMainApplication::CreateAllShaders()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-bool CMainApplication::SetupTexturemaps()
+bool VRRenderer::SetupTexturemaps()
 {
 	std::string sExecutableDirectory = Path_StripFilename(Path_GetExecutablePath());
 	std::string strFullPath = Path_MakeAbsolute("../cube_texture.png", sExecutableDirectory);
@@ -976,7 +947,7 @@ bool CMainApplication::SetupTexturemaps()
 //-----------------------------------------------------------------------------
 // Purpose: create a sea of cubes
 //-----------------------------------------------------------------------------
-void CMainApplication::SetupScene()
+void VRRenderer::SetupScene()
 {
 	if (!m_pHMD)
 		return;
@@ -1041,7 +1012,7 @@ void CMainApplication::SetupScene()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CMainApplication::AddCubeVertex(float fl0, float fl1, float fl2, float fl3, float fl4, std::vector<float> &vertdata)
+void VRRenderer::AddCubeVertex(float fl0, float fl1, float fl2, float fl3, float fl4, std::vector<float> &vertdata)
 {
 	vertdata.push_back(fl0);
 	vertdata.push_back(fl1);
@@ -1054,7 +1025,7 @@ void CMainApplication::AddCubeVertex(float fl0, float fl1, float fl2, float fl3,
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CMainApplication::AddCubeToScene(Matrix4 mat, std::vector<float> &vertdata)
+void VRRenderer::AddCubeToScene(Matrix4 mat, std::vector<float> &vertdata)
 {
 	// Matrix4 mat( outermat.data() );
 
@@ -1115,7 +1086,7 @@ void CMainApplication::AddCubeToScene(Matrix4 mat, std::vector<float> &vertdata)
 //-----------------------------------------------------------------------------
 // Purpose: Draw all of the controllers as X/Y/Z lines
 //-----------------------------------------------------------------------------
-void CMainApplication::RenderControllerAxes()
+void VRRenderer::RenderControllerAxes()
 {
 	// don't draw controllers if somebody else has input focus
 	if (m_pHMD->IsInputFocusCapturedByAnotherProcess())
@@ -1217,7 +1188,7 @@ void CMainApplication::RenderControllerAxes()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CMainApplication::SetupCameras()
+void VRRenderer::SetupCameras()
 {
 	m_mat4ProjectionLeft = GetHMDMatrixProjectionEye(vr::Eye_Left);
 	m_mat4ProjectionRight = GetHMDMatrixProjectionEye(vr::Eye_Right);
@@ -1230,7 +1201,7 @@ void CMainApplication::SetupCameras()
 // Purpose: Creates a frame buffer. Returns true if the buffer was set up.
 //          Returns false if the setup failed.
 //-----------------------------------------------------------------------------
-bool CMainApplication::CreateFrameBuffer(int nWidth, int nHeight, FramebufferDesc &framebufferDesc)
+bool VRRenderer::CreateFrameBuffer(int nWidth, int nHeight, FramebufferDesc &framebufferDesc)
 {
 	glGenFramebuffers(1, &framebufferDesc.m_nRenderFramebufferId);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebufferDesc.m_nRenderFramebufferId);
@@ -1271,7 +1242,7 @@ bool CMainApplication::CreateFrameBuffer(int nWidth, int nHeight, FramebufferDes
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-bool CMainApplication::SetupStereoRenderTargets()
+bool VRRenderer::SetupStereoRenderTargets()
 {
 	if (!m_pHMD)
 		return false;
@@ -1288,7 +1259,7 @@ bool CMainApplication::SetupStereoRenderTargets()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CMainApplication::SetupCompanionWindow()
+void VRRenderer::SetupCompanionWindow()
 {
 	if (!m_pHMD)
 		return;
@@ -1340,7 +1311,7 @@ void CMainApplication::SetupCompanionWindow()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CMainApplication::RenderStereoTargets()
+void VRRenderer::RenderStereoTargets()
 {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_MULTISAMPLE);
@@ -1388,7 +1359,7 @@ void CMainApplication::RenderStereoTargets()
 //-----------------------------------------------------------------------------
 // Purpose: Renders a scene with respect to nEye.
 //-----------------------------------------------------------------------------
-void CMainApplication::RenderScene(vr::Hmd_Eye nEye)
+void VRRenderer::RenderScene(vr::Hmd_Eye nEye)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
@@ -1409,6 +1380,30 @@ void CMainApplication::RenderScene(vr::Hmd_Eye nEye)
 					if (e->mesh != nullptr) {
 						shader->set_uniform("matrix", current_model_transform * e->transform->get_model_transform());
 						
+						shader->set_uniform("color", e->color);
+
+						int indexCount = (int)e->mesh->indices.size();
+						if (indexCount == 0) {
+							glDrawArrays((GLenum)e->mesh->topology, 0, e->mesh->vertex_count);
+						}
+						else {
+							glDrawElements((GLenum)e->mesh->topology, indexCount, GL_UNSIGNED_SHORT, 0);
+						}
+					}
+				}
+			}
+		}
+
+		if (God::sphere_mesh_entities.count > 0) {
+			Mesh::get_sphere()->bind();
+
+			for (int i = 0; i < God::sphere_mesh_entities.capacity; i++) {
+				Entity** p = God::sphere_mesh_entities[i];
+				if (p != nullptr) {
+					Entity* e = *p;
+					if (e->mesh != nullptr) {
+						shader->set_uniform("matrix", current_model_transform * e->transform->get_model_transform());
+
 						shader->set_uniform("color", e->color);
 
 						int indexCount = (int)e->mesh->indices.size();
@@ -1471,7 +1466,7 @@ void CMainApplication::RenderScene(vr::Hmd_Eye nEye)
 }
 
 
-void CMainApplication::RenderEntity(Entity* entity) {
+void VRRenderer::RenderEntity(Entity* entity) {
 
 	if (entity->transform == nullptr) {
 		cout << entity->name << "->transform = nullptr\n";
@@ -1519,7 +1514,7 @@ void CMainApplication::RenderEntity(Entity* entity) {
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CMainApplication::RenderCompanionWindow()
+void VRRenderer::RenderCompanionWindow()
 {
 	glDisable(GL_DEPTH_TEST);
 	glViewport(0, 0, m_nCompanionWindowWidth, m_nCompanionWindowHeight);
@@ -1551,7 +1546,7 @@ void CMainApplication::RenderCompanionWindow()
 //-----------------------------------------------------------------------------
 // Purpose: Gets a Matrix Projection Eye with respect to nEye.
 //-----------------------------------------------------------------------------
-Matrix4 CMainApplication::GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye)
+Matrix4 VRRenderer::GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye)
 {
 	if (!m_pHMD)
 		return Matrix4();
@@ -1570,7 +1565,7 @@ Matrix4 CMainApplication::GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye)
 //-----------------------------------------------------------------------------
 // Purpose: Gets an HMDMatrixPoseEye with respect to nEye.
 //-----------------------------------------------------------------------------
-Matrix4 CMainApplication::GetHMDMatrixPoseEye(vr::Hmd_Eye nEye)
+Matrix4 VRRenderer::GetHMDMatrixPoseEye(vr::Hmd_Eye nEye)
 {
 	if (!m_pHMD)
 		return Matrix4();
@@ -1591,7 +1586,7 @@ Matrix4 CMainApplication::GetHMDMatrixPoseEye(vr::Hmd_Eye nEye)
 // Purpose: Gets a Current View Projection Matrix with respect to nEye,
 //          which may be an Eye_Left or an Eye_Right.
 //-----------------------------------------------------------------------------
-Matrix4 CMainApplication::GetCurrentViewProjectionMatrix(vr::Hmd_Eye nEye)
+Matrix4 VRRenderer::GetCurrentViewProjectionMatrix(vr::Hmd_Eye nEye)
 {
 	Matrix4 matMVP;
 	if (nEye == vr::Eye_Left)
@@ -1610,13 +1605,14 @@ Matrix4 CMainApplication::GetCurrentViewProjectionMatrix(vr::Hmd_Eye nEye)
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CMainApplication::UpdateHMDMatrixPose()
+void VRRenderer::UpdateHMDMatrixPose()
 {
 	if (!m_pHMD)
 		return;
 
 	vr::VRCompositor()->WaitGetPoses(m_rTrackedDevicePose, vr::k_unMaxTrackedDeviceCount, NULL, 0);
 
+	int controller_count = 0;
 	m_iValidPoseCount = 0;
 	m_strPoseClasses = "";
 	for (int nDevice = 0; nDevice < vr::k_unMaxTrackedDeviceCount; ++nDevice)
@@ -1629,13 +1625,31 @@ void CMainApplication::UpdateHMDMatrixPose()
 			{
 				switch (m_pHMD->GetTrackedDeviceClass(nDevice))
 				{
-				case vr::TrackedDeviceClass_Controller:        m_rDevClassChar[nDevice] = 'C'; break;
-				case vr::TrackedDeviceClass_HMD:               m_rDevClassChar[nDevice] = 'H'; break;
-				case vr::TrackedDeviceClass_Invalid:           m_rDevClassChar[nDevice] = 'I'; break;
-				case vr::TrackedDeviceClass_GenericTracker:    m_rDevClassChar[nDevice] = 'G'; break;
-				case vr::TrackedDeviceClass_TrackingReference: m_rDevClassChar[nDevice] = 'T'; break;
-				default:                                       m_rDevClassChar[nDevice] = '?'; break;
+					case vr::TrackedDeviceClass_Controller:        
+						m_rDevClassChar[nDevice] = 'C'; 
+						break;
+					case vr::TrackedDeviceClass_HMD:               
+						m_rDevClassChar[nDevice] = 'H'; 
+						break;
+					case vr::TrackedDeviceClass_Invalid:           m_rDevClassChar[nDevice] = 'I'; break;
+					case vr::TrackedDeviceClass_GenericTracker:    m_rDevClassChar[nDevice] = 'G'; break;
+					case vr::TrackedDeviceClass_TrackingReference: m_rDevClassChar[nDevice] = 'T'; break;
+					default:                                       m_rDevClassChar[nDevice] = '?'; break;
 				}
+			}
+
+			switch (m_pHMD->GetTrackedDeviceClass(nDevice))
+			{
+				case vr::TrackedDeviceClass_Controller:
+					if (controller_count < 2) {
+						Input::controller_matrix[controller_count++] = ConvertToMat4(m_rmat4DevicePose[nDevice]);
+					}
+					break;
+				case vr::TrackedDeviceClass_HMD:
+					Input::head_matrix = ConvertToMat4(m_rmat4DevicePose[nDevice]);
+
+					break;
+				default: break;
 			}
 			m_strPoseClasses += m_rDevClassChar[nDevice];
 		}
@@ -1652,10 +1666,10 @@ void CMainApplication::UpdateHMDMatrixPose()
 //-----------------------------------------------------------------------------
 // Purpose: Finds a render model we've already loaded or loads a new one
 //-----------------------------------------------------------------------------
-CGLRenderModel *CMainApplication::FindOrLoadRenderModel(const char *pchRenderModelName)
+VRRenderModel *VRRenderer::FindOrLoadRenderModel(const char *pchRenderModelName)
 {
-	CGLRenderModel *pRenderModel = NULL;
-	for (std::vector< CGLRenderModel * >::iterator i = m_vecRenderModels.begin(); i != m_vecRenderModels.end(); i++)
+	VRRenderModel *pRenderModel = NULL;
+	for (std::vector< VRRenderModel * >::iterator i = m_vecRenderModels.begin(); i != m_vecRenderModels.end(); i++)
 	{
 		if (!stricmp((*i)->GetName().c_str(), pchRenderModelName))
 		{
@@ -1701,7 +1715,7 @@ CGLRenderModel *CMainApplication::FindOrLoadRenderModel(const char *pchRenderMod
 			return NULL; // move on to the next tracked device
 		}
 
-		pRenderModel = new CGLRenderModel(pchRenderModelName);
+		pRenderModel = new VRRenderModel(pchRenderModelName);
 		if (!pRenderModel->BInit(*pModel, *pTexture))
 		{
 			dprintf("Unable to create GL model from render model %s\n", pchRenderModelName);
@@ -1722,14 +1736,14 @@ CGLRenderModel *CMainApplication::FindOrLoadRenderModel(const char *pchRenderMod
 //-----------------------------------------------------------------------------
 // Purpose: Create/destroy GL a Render Model for a single tracked device
 //-----------------------------------------------------------------------------
-void CMainApplication::SetupRenderModelForTrackedDevice(vr::TrackedDeviceIndex_t unTrackedDeviceIndex)
+void VRRenderer::SetupRenderModelForTrackedDevice(vr::TrackedDeviceIndex_t unTrackedDeviceIndex)
 {
 	if (unTrackedDeviceIndex >= vr::k_unMaxTrackedDeviceCount)
 		return;
 
 	// try to find a model we've already set up
 	std::string sRenderModelName = GetTrackedDeviceString(m_pHMD, unTrackedDeviceIndex, vr::Prop_RenderModelName_String);
-	CGLRenderModel *pRenderModel = FindOrLoadRenderModel(sRenderModelName.c_str());
+	VRRenderModel *pRenderModel = FindOrLoadRenderModel(sRenderModelName.c_str());
 	if (!pRenderModel)
 	{
 		std::string sTrackingSystemName = GetTrackedDeviceString(m_pHMD, unTrackedDeviceIndex, vr::Prop_TrackingSystemName_String);
@@ -1746,7 +1760,7 @@ void CMainApplication::SetupRenderModelForTrackedDevice(vr::TrackedDeviceIndex_t
 //-----------------------------------------------------------------------------
 // Purpose: Create/destroy GL Render Models
 //-----------------------------------------------------------------------------
-void CMainApplication::SetupRenderModels()
+void VRRenderer::SetupRenderModels()
 {
 	memset(m_rTrackedDeviceToRenderModel, 0, sizeof(m_rTrackedDeviceToRenderModel));
 
@@ -1767,7 +1781,7 @@ void CMainApplication::SetupRenderModels()
 //-----------------------------------------------------------------------------
 // Purpose: Converts a SteamVR matrix to our local matrix class
 //-----------------------------------------------------------------------------
-Matrix4 CMainApplication::ConvertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t &matPose)
+Matrix4 VRRenderer::ConvertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t &matPose)
 {
 	Matrix4 matrixObj(
 		matPose.m[0][0], matPose.m[1][0], matPose.m[2][0], 0.0,
@@ -1778,7 +1792,7 @@ Matrix4 CMainApplication::ConvertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t 
 	return matrixObj;
 }
 
-mat4 CMainApplication::ConvertToMat4(Matrix4 matPose)
+mat4 VRRenderer::ConvertToMat4(Matrix4 matPose)
 {
 
 	mat4 matrixObj = mat4(
@@ -1794,7 +1808,7 @@ mat4 CMainApplication::ConvertToMat4(Matrix4 matPose)
 //-----------------------------------------------------------------------------
 // Purpose: Create/destroy GL Render Models
 //-----------------------------------------------------------------------------
-CGLRenderModel::CGLRenderModel(const std::string & sRenderModelName)
+VRRenderModel::VRRenderModel(const std::string & sRenderModelName)
 	: m_sModelName(sRenderModelName)
 {
 	m_glIndexBuffer = 0;
@@ -1804,7 +1818,7 @@ CGLRenderModel::CGLRenderModel(const std::string & sRenderModelName)
 }
 
 
-CGLRenderModel::~CGLRenderModel()
+VRRenderModel::~VRRenderModel()
 {
 	Cleanup();
 }
@@ -1813,7 +1827,7 @@ CGLRenderModel::~CGLRenderModel()
 //-----------------------------------------------------------------------------
 // Purpose: Allocates and populates the GL resources for a render model
 //-----------------------------------------------------------------------------
-bool CGLRenderModel::BInit(const vr::RenderModel_t & vrModel, const vr::RenderModel_TextureMap_t & vrDiffuseTexture)
+bool VRRenderModel::BInit(const vr::RenderModel_t & vrModel, const vr::RenderModel_TextureMap_t & vrDiffuseTexture)
 {
 	// create and bind a VAO to hold state for this model
 	glGenVertexArrays(1, &m_glVertArray);
@@ -1869,7 +1883,7 @@ bool CGLRenderModel::BInit(const vr::RenderModel_t & vrModel, const vr::RenderMo
 //-----------------------------------------------------------------------------
 // Purpose: Frees the GL resources for a render model
 //-----------------------------------------------------------------------------
-void CGLRenderModel::Cleanup()
+void VRRenderModel::Cleanup()
 {
 	if (m_glVertBuffer)
 	{
@@ -1886,7 +1900,7 @@ void CGLRenderModel::Cleanup()
 //-----------------------------------------------------------------------------
 // Purpose: Draws the render model
 //-----------------------------------------------------------------------------
-void CGLRenderModel::Draw()
+void VRRenderModel::Draw()
 {
 	glBindVertexArray(m_glVertArray);
 

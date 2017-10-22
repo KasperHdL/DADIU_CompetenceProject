@@ -20,20 +20,21 @@ class Snake : public Entity{
 
         //start values
 
-        float start_move_delay = 0.3f;
+        float start_move_delay = 0.01f;
         vec3 origin = vec3(0,0,0);
 
         //values
         float move_timer;
         float move_delay;
 
+		float move_length = 0.5f;
 
-        vec2 last_movement;
-        vec2 last_legal_input;
-        vec2 input;
+
+        vec3 last_movement;
+        vec3 input;
 
         int playarea;
-        vec2 local_pos;
+        vec3 local_pos;
 
 
         int snake_length;
@@ -47,9 +48,9 @@ class Snake : public Entity{
             name = "Snake";
 
             transform->position = origin;
-            transform->scale = vec3(.5f);
+            transform->scale = vec3(.1f);
 
-            set_mesh_as_cube();
+            set_mesh_as_sphere();
 
             color = vec4(1,0,0,1);
             specularity = 10;
@@ -69,12 +70,11 @@ class Snake : public Entity{
             move_timer = -move_delay;
 
             snake_length = 3;
-            local_pos = vec2(0);
+            local_pos = vec3(0);
             transform->position = origin;
 
-            last_movement = vec2(0,0);
-            input = vec2(1,0);
-            last_legal_input = input;
+            input = vec3(1,0,0);
+			last_movement = input;
 
             for(int i = 0; i < tail.capacity;i++){
                 SnakeTail* t = tail[i];
@@ -92,37 +92,27 @@ class Snake : public Entity{
                 return;
             }
 
+			move_timer += dt;
 
-            if(Input::get_key_down(SDL_SCANCODE_UP))
-                input = vec2(0,-1);
-            else if(Input::get_key_down(SDL_SCANCODE_LEFT))
-                input = vec2(-1,0);
-            else if(Input::get_key_down(SDL_SCANCODE_RIGHT))
-                input = vec2(1,0);
-            else if(Input::get_key_down(SDL_SCANCODE_DOWN))
-                input = vec2(0,1);
+			if (move_timer >= move_delay) {
+				move_timer -= move_delay;
 
-            if(-input == last_movement){
-                input = last_legal_input;
-            }else{
-                last_legal_input = input;
-            }
+				mat4 controller_matrix = Input::controller_matrix[0];
+				vec3 controller = vec3(controller_matrix * vec4(0, 0, 0, 1));
 
-            move_timer += dt;
+				input = controller - local_pos;
 
-            if(move_timer >= move_delay){
-                move_timer -= move_delay;
+				move_tail();
 
-                move_tail();
+				input = normalize(input) * move_length;
 
-                if(-input == last_movement)input = last_movement;
-                local_pos += input;
-                last_movement = input;
-                transform->position = origin + vec3(local_pos.x, 0 ,local_pos.y);
 
-                is_dead = collision_check();
+				local_pos += input * dt;
+				transform->position = origin + local_pos;
+			}
 
-            }
+           // is_dead = collision_check();
+
         }
 
         bool collision_check(){
