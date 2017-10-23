@@ -15,7 +15,7 @@
 class Snake : public Entity{ 
     public: 
 
-        DynamicPool<SnakeTail> tail = DynamicPool<SnakeTail>(8);
+        DynamicPool<SnakeTail> tail = DynamicPool<SnakeTail>(16);
 
 
         //start values
@@ -53,14 +53,21 @@ class Snake : public Entity{
             set_mesh_as_sphere();
 
             color = vec4(1,0,0,1);
-            specularity = 10;
 
-            snake_length = 3;
+            snake_length = 5;
 
+			SnakeTail* last;
             for(int i = 0; i < snake_length; i++){
                 SnakeTail* t = new (tail.create()) SnakeTail(i);
+				if (i == 0) {
+					t->linked_transform = transform;
+				}
+				else 
+				{
+					t->linked_transform = last->transform;
+				}
+				last = t;
             }
-
         } 
 
         void restart(){
@@ -69,7 +76,7 @@ class Snake : public Entity{
             move_delay = start_move_delay;
             move_timer = -move_delay;
 
-            snake_length = 3;
+            snake_length = 5;
             local_pos = vec3(0);
             transform->position = origin;
 
@@ -102,7 +109,7 @@ class Snake : public Entity{
 
 				input = controller - local_pos;
 
-				move_tail();
+				update_tail(dt);
 
 				input = normalize(input) * move_length;
 
@@ -136,16 +143,11 @@ class Snake : public Entity{
             return false;
         }
 
-        void move_tail(){
-            vec3 pos_a = transform->position;
-            vec3 pos_b = pos_a;
-
+        void update_tail(float dt){
             for(int i = 0; i < snake_length;i++){
                 SnakeTail* t = tail[i];
                 if(t != nullptr){
-                    pos_a = t->transform->position;
-                    t->transform->position = pos_b;
-                    pos_b = pos_a;
+					t->update(dt);
                 }
             }
         }
@@ -163,6 +165,8 @@ class Snake : public Entity{
 
             }
 
+			tail[snake_length - 1]->linked_transform = tail[snake_length - 2]->transform;
+			
             move_delay *= 0.9f;
         }
 

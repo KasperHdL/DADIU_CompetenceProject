@@ -15,6 +15,10 @@
 class SnakeTail : public Entity{ 
     public: 
 
+		Transform* linked_transform;
+		
+		float distance = 0.1f;
+
         SnakeTail(int index){ 
             name = "SnakeTail";
 
@@ -24,14 +28,18 @@ class SnakeTail : public Entity{
 			set_mesh_as_sphere();
 
             color = vec4(0,1,0,1);
-            specularity = 10;
 
         } 
 
-        void set_position(vec3 pos){
-            transform->position = pos;
+		inline void update(float dt) {
+			vec3 delta = transform->position - linked_transform->position;
 
-        }
+			float l = length<float>(delta);
+
+			if (l > distance) {
+				transform->position = linked_transform->position + normalize(delta) * distance;
+			}
+		}
  
         ~SnakeTail(){ 
  

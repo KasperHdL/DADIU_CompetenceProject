@@ -146,6 +146,10 @@ public:
 	Matrix4 m_rmat4DevicePose[vr::k_unMaxTrackedDeviceCount];
 
 private:
+	void _render_pool(DynamicPool<Entity*> pool);
+
+
+
 	bool m_bDebugOpenGL;
 	bool m_bVerbose;
 	bool m_bPerf;
@@ -892,11 +896,26 @@ bool VRRenderer::CreateAllShaders()
 		"}\n"
 	);
 
-	shader = AssetManager::get_shader("shaders/standard");
+	//Shader setup
+	{
+		shader = AssetManager::get_shader("shaders/standard");
 
-	shader->init_uniform("matrix", Shader::Uniform_Type::Mat4);
-	shader->init_uniform("color", Shader::Uniform_Type::Vec4);
+		shader->init_uniform("model", Shader::Uniform_Type::Mat4);
+		shader->init_uniform("view", Shader::Uniform_Type::Mat4);
+		shader->init_uniform("projection", Shader::Uniform_Type::Mat4);
+		shader->init_uniform("normalMat", Shader::Uniform_Type::Mat3);
 
+		shader->init_uniform("ambientLight", Shader::Uniform_Type::Vec4);
+		shader->init_uniform("color", Shader::Uniform_Type::Vec4);
+		shader->init_uniform("specularity", Shader::Uniform_Type::Float);
+
+
+		for (int i = 0; i < 4; i++) {
+			shader->init_uniform("lightPosType[" + to_string(i) + "]", Shader::Uniform_Type::Vec4);
+			shader->init_uniform("lightColorRange[" + to_string(i) + "]", Shader::Uniform_Type::Vec4);
+		}
+
+	}
 
 
 	return m_unSceneProgramID != 0
@@ -1355,6 +1374,51 @@ void VRRenderer::RenderStereoTargets()
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
+void VRRenderer::_render_pool(DynamicPool<Entity*> pool) {
+	if (pool.count > 0) {
+
+		for (int i = 0; i < pool.capacity; i++) {
+			Entity** p = pool[i];
+			if (p != nullptr) {
+				Entity* e = *p;
+				if (e->is_visible && e->mesh != nullptr) {
+					mat4 model = current_model_transform * e->transform->get_model_transform();
+					shader->set_uniform("model", model);
+					shader->set_uniform("view", current_view_transform);
+					shader->set_uniform("projection", current_projection_transform);
+					shader->set_uniform("normalMat", transpose(inverse((glm::mat3)model)));
+
+
+					shader->set_uniform("ambientLight", vec4(0.1f));
+
+					shader->set_uniform("color", e->color);
+
+					//lights
+					for (int i = 0; i < 4; i++) {
+						Light* l = God::lights[i];
+						if (l != nullptr) {
+
+							vec4 light_pos_type = vec4(l->position, (int)l->type);
+							vec4 light_color_range = vec4(l->color * l->intensity, l->range);
+
+							shader->set_uniform("lightPosType[" + to_string(i) + "]", light_pos_type);
+							shader->set_uniform("lightColorRange[" + to_string(i) + "]", light_color_range);
+
+						}
+					}
+
+					int indexCount = (int)e->mesh->indices.size();
+					if (indexCount == 0) {
+						glDrawArrays((GLenum)e->mesh->topology, 0, e->mesh->vertex_count);
+					}
+					else {
+						glDrawElements((GLenum)e->mesh->topology, indexCount, GL_UNSIGNED_SHORT, 0);
+					}
+				}
+			}
+		}
+	}
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: Renders a scene with respect to nEye.
@@ -1368,55 +1432,29 @@ void VRRenderer::RenderScene(vr::Hmd_Eye nEye)
 	{
 		shader->use();
 		
-		current_model_transform = ConvertToMat4(GetCurrentViewProjectionMatrix(nEye).get());
+		current_model_transform = ConvertToMat4(m_mat4HMDPose);
 
-		if (God::cube_mesh_entities.count > 0) {
-			Mesh::get_cube()->bind();
-
-			for (int i = 0; i < God::cube_mesh_entities.capacity; i++) {
-				Entity** p = God::cube_mesh_entities[i];
-				if (p != nullptr) {
-					Entity* e = *p;
-					if (e->mesh != nullptr) {
-						shader->set_uniform("matrix", current_model_transform * e->transform->get_model_transform());
-						
-						shader->set_uniform("color", e->color);
-
-						int indexCount = (int)e->mesh->indices.size();
-						if (indexCount == 0) {
-							glDrawArrays((GLenum)e->mesh->topology, 0, e->mesh->vertex_count);
-						}
-						else {
-							glDrawElements((GLenum)e->mesh->topology, indexCount, GL_UNSIGNED_SHORT, 0);
-						}
-					}
-				}
-			}
+		if (nEye == vr::Eye_Left)
+		{
+			current_view_transform = ConvertToMat4(m_mat4eyePosLeft);
+			current_projection_transform = ConvertToMat4(m_mat4ProjectionLeft);
+		}
+		else if (nEye == vr::Eye_Right)
+		{
+			current_view_transform = ConvertToMat4(m_mat4eyePosRight);
+			current_projection_transform = ConvertToMat4(m_mat4ProjectionRight);
 		}
 
-		if (God::sphere_mesh_entities.count > 0) {
-			Mesh::get_sphere()->bind();
 
-			for (int i = 0; i < God::sphere_mesh_entities.capacity; i++) {
-				Entity** p = God::sphere_mesh_entities[i];
-				if (p != nullptr) {
-					Entity* e = *p;
-					if (e->mesh != nullptr) {
-						shader->set_uniform("matrix", current_model_transform * e->transform->get_model_transform());
+		Mesh::get_cube()->bind();
+		_render_pool(God::cube_mesh_entities);
 
-						shader->set_uniform("color", e->color);
+		Mesh::get_sphere()->bind();
+		_render_pool(God::sphere_mesh_entities);
 
-						int indexCount = (int)e->mesh->indices.size();
-						if (indexCount == 0) {
-							glDrawArrays((GLenum)e->mesh->topology, 0, e->mesh->vertex_count);
-						}
-						else {
-							glDrawElements((GLenum)e->mesh->topology, indexCount, GL_UNSIGNED_SHORT, 0);
-						}
-					}
-				}
-			}
-		}
+		Mesh::get_quad()->bind();
+		_render_pool(God::quad_mesh_entities);
+
 		/*
 		glUseProgram(m_unSceneProgramID);
 

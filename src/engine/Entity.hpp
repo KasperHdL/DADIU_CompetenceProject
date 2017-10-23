@@ -22,6 +22,7 @@ class Entity
 public:
     //general
     bool debug_control = false;
+	bool is_visible = true;
     std::string name;
 
     Transform* transform = nullptr;

@@ -25,11 +25,12 @@ class Fruit : public Entity{
             name = "Fruit";
 
             transform->position = vec3(10);
-            transform->scale = vec3(.5f);
+            transform->scale = vec3(.1f);
 
             set_mesh_as_sphere();
 
-            color = vec4(1,0,0,0);
+			is_visible = false;
+            color = vec4(1,.5f,0,0);
             specularity = 10;
         } 
 
@@ -48,16 +49,18 @@ class Fruit : public Entity{
 
             if(time >= delay){
                 is_active = true;
-                
-                int x = (std::rand() % (playarea * 2)) - playarea;
-                int y = (std::rand() % (playarea * 2)) - playarea;
+				is_visible = true;
 
-                transform->position = vec3(x, 0, y);
+				float x = glm::linearRand<float>(-playarea, playarea);
+				float y = glm::linearRand<float>(-playarea, playarea);
+
+                transform->position = vec3(x, 1, y);
             }
         }
 
         void collected(){
             is_active = false;
+			is_visible = false;
             time = 0;
             transform->position = vec3(10);
 
