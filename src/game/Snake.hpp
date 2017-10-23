@@ -104,17 +104,19 @@ class Snake : public Entity{
 			if (move_timer >= move_delay) {
 				move_timer -= move_delay;
 
-				mat4 controller_matrix = Input::controller_matrix[0];
-				vec3 controller = vec3(controller_matrix * vec4(0, 0, 0, 1));
+				vec3 controller = vec3(Input::controller_matrix[0][3]);
 
-				input = controller - local_pos;
+				if (glm::length(controller) != 0) {
 
-				update_tail(dt);
+					input = controller - local_pos;
 
-				input = normalize(input) * move_length;
+					update_tail(dt);
 
+					input = normalize(input) * move_length;
 
-				local_pos += input * dt;
+					local_pos += input * dt;
+				}
+
 				transform->position = origin + local_pos;
 			}
 

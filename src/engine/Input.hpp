@@ -73,7 +73,6 @@ public:
 	static bool get_vr_button_touch(int controller_index, VRButton button);
 
 	static glm::vec2 get_vr_axis(int controller_index, int axis_index);
-	static glm::mat4 get_vr_device_matrix(int controller_index);
 
 
 };

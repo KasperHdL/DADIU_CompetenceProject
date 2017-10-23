@@ -892,7 +892,7 @@ bool VRRenderer::CreateAllShaders()
 		"out vec4 outputColor;\n"
 		"void main()\n"
 		"{\n"
-		"		outputColor = texture(mytexture, v2UV);\n"
+		"		outputColor = texture(mytexture, vec2(v2UV.x, 1.0f - v2UV.y));\n"
 		"}\n"
 	);
 
@@ -1578,6 +1578,7 @@ void VRRenderer::RenderCompanionWindow()
 
 	glBindVertexArray(0);
 	glUseProgram(0);
+
 }
 
 
