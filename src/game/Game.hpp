@@ -91,10 +91,11 @@ class Game{
             snake->update(delta_time);
             fruit->update(delta_time);
 
+			
             if(fruit->is_active){
                 //check if fruit and snake is at the same place
 
-                if(check_collision(snake->transform, fruit->transform)){
+                if(check_sphere_collision(snake->transform, fruit->transform)){
                     fruits_collected++;
 
                     if(fruits_collected > max_fruits_collected) 
@@ -109,12 +110,12 @@ class Game{
 
         }
 
-		inline bool check_collision(Transform* t1, Transform* t2) {
+		inline bool check_sphere_collision(Transform* t1, Transform* t2) {
 			return length(t1->position - t2->position) < t1->scale.x + t2->scale.x;
 		}
 
-		inline bool check_collision(vec3 p1, float d1, vec3 p2, float d2) {
-			return length(p1 - p2) < d1 + d2;
+		inline bool check_sphere_point_collision(vec3 p1, float d1, vec3 p2) {
+			return length(p1 - p2) < d1;
 		}
 
         void draw_debug(){

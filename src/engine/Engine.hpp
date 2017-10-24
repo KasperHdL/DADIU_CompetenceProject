@@ -29,6 +29,8 @@ public:
     Input input;
     DebugInterface* debug;
 
+	bool should_quit = false;
+
     int screen_width;
     int screen_height;
 

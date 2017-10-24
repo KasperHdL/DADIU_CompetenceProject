@@ -21,10 +21,9 @@ private:
 
 public:
 
-
-    bool quit = false;
-
-    void update();
+	static Input* instance;
+	void initialize(vr::IVRSystem* hmd, vr::IVRChaperone* chaperone);
+    bool update();
 
 
 	//keyboard
@@ -38,8 +37,10 @@ public:
 
 	//VR
 
+	static vr::IVRSystem* vr_hmd;
+	static vr::IVRChaperone* vr_chaperone;
+
 	void update_vr_pose();
-	void set_chaperone(vr::IVRChaperone* chaperone);
 
 	enum VRDevice {
 		Invalid,
@@ -58,8 +59,6 @@ public:
 
 	static int num_controllers;
 
-	vr::IVRSystem* vr_hmd;
-	vr::IVRChaperone* vr_chaperone;
 
 	enum VRButton
 	{
@@ -96,6 +95,8 @@ public:
 
 
 	static glm::mat4 get_vr_controller_matrix(int controller_index);
+	static void set_vr_controller_haptic(int controller_index, int axis, float strength);
+
 	static glm::mat4 get_hmd_matrix();
 
 private:

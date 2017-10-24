@@ -20,15 +20,15 @@ class Snake : public Entity{
 
         //start values
 
-        float start_move_delay = 0.01f;
+		float start_move_length = 0.5f;
         vec3 origin = vec3(0,0,0);
 
         //values
-        float move_timer;
-        float move_delay;
+		float move_length;
 
-		float move_length = 0.5f;
-
+		bool haptic_is_pulsing = false;
+		float haptic_timer = 0;
+		float haptic_length = 0.05f;
 
         vec3 last_movement;
         vec3 input;
@@ -59,8 +59,7 @@ class Snake : public Entity{
         void restart(){
             is_dead = false;
 
-            move_delay = start_move_delay;
-            move_timer = -move_delay;
+            move_length = start_move_length;
 
             local_pos = vec3(0);
             transform->position = origin;
@@ -88,47 +87,58 @@ class Snake : public Entity{
                 return;
             }
 
-			move_timer += dt;
+			vec3 controller = vec3(Input::get_vr_controller_matrix(0)[3]);
 
-			if (move_timer >= move_delay) {
-				move_timer -= move_delay;
+			if (glm::length(controller) != 0) {
 
-				vec3 controller = vec3(Input::get_vr_controller_matrix(0)[3]);
+				input = controller - local_pos;
 
-				if (glm::length(controller) != 0) {
+				float length = glm::length(input);
 
-					input = controller - local_pos;
-
-					update_tail(dt);
-
-					input = normalize(input) * move_length;
-
-					local_pos += input * dt;
+				haptic_timer += dt;
+				if (length < 0.5) {
+					if (haptic_timer >= haptic_length){
+						haptic_timer = 0;
+						haptic_is_pulsing = !haptic_is_pulsing;
+					}
+				}
+				else {
+					haptic_is_pulsing = false;
 				}
 
-				transform->position = origin + local_pos;
+				if (haptic_is_pulsing) {
+					Input::set_vr_controller_haptic(0, 0, 1);
+				}
+
+				update_tail(dt);
+
+				input = normalize(input) * move_length;
+
+				local_pos += input * dt;
 			}
 
-           is_dead = collision_check();
-		  // cout << " == " << (is_dead ? "true" : "false") << "\n";
+			transform->position = origin + local_pos;
+
+
+            is_dead = collision_check();
 
         }
 
         bool collision_check(){
-
-			//cout << "lp [" << local_pos.x << ", " << local_pos.y << ", " << local_pos.z << "]";
-			//cout << "\tps [" << playarea.x << ", " << playarea.y << "]";
 
             //check collision with walls
             if(glm::abs(local_pos.x) > playarea.x / 2.0f || glm::abs(local_pos.z) > playarea.y / 2.0f){
                 return true;
             }
 
+			if (check_sphere_point_collision(transform->position, transform->scale.x, Input::get_vr_controller_matrix(0)[3]))
+				return true;
+
             //check with tail
             for(int i = 2; i < snake_length;i++){
                 SnakeTail* t = tail[i];
                 if(t != nullptr){
-                    if(check_collision(transform->position, transform->scale.x, t->transform->position, 0.0f)){
+                    if(check_sphere_point_collision(transform->position, transform->scale.x, t->transform->position)){
                         return true;
                     }
                 }
@@ -151,7 +161,7 @@ class Snake : public Entity{
         void fruit_collected(){
 			create_tail_piece();
 
-            move_delay *= 0.9f;
+            move_length *= 1.1f;
         }
 
 		void create_tail_piece() {
@@ -176,8 +186,8 @@ class Snake : public Entity{
 
 		}
 
-		inline bool check_collision(vec3 p1, float d1, vec3 p2, float d2) {
-			return length(p1 - p2) < d1 + d2;
+		inline bool check_sphere_point_collision(vec3 p1, float d1, vec3 p2) {
+			return length(p1 - p2) < d1;
 		}
 
 
@@ -187,8 +197,8 @@ class Snake : public Entity{
 			ImGui::Text("Snake Settings:");
 			ImGui::Separator();
 
-			ImGui::DragFloat("Start Move Delay", &start_move_delay, 0.005f);
-			ImGui::DragFloat("Current Move Delay", &move_delay, 0.005f);
+			ImGui::DragFloat("Start Move Length", &start_move_length, 0.005f);
+			ImGui::DragFloat("Current Move Length", &move_length, 0.005f);
 
 		}
 

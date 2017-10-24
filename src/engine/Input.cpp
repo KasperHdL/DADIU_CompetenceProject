@@ -11,6 +11,11 @@ glm::vec2 Input::_last_mouse = glm::vec2();
 glm::vec2 Input::_current_mouse = glm::vec2();
 
 //vr
+Input* Input::instance = nullptr;
+
+vr::IVRSystem* Input::vr_hmd;
+vr::IVRChaperone* Input::vr_chaperone;
+
 vr::VRControllerState001_t Input::_vr_controller[vr::k_unMaxTrackedDeviceCount] = { 0 };
 
 vr::TrackedDevicePose_t Input::device_pose[vr::k_unMaxTrackedDeviceCount];
@@ -23,7 +28,15 @@ int Input::num_controllers = 0;
 
 glm::vec2 Input::vr_playarea = glm::vec2();
 
-void Input::update(){
+void Input::initialize(vr::IVRSystem* hmd, vr::IVRChaperone* chaperone) {
+	instance = this;
+	vr_hmd = hmd;
+	vr_chaperone = chaperone;
+	vr_chaperone->GetPlayAreaSize(&vr_playarea.x, &vr_playarea.y);
+}
+
+
+bool Input::update(){
     for(int i = 0; i < 284; i++)
         _last_kb[i] = _now_kb[i];
 
@@ -42,7 +55,7 @@ void Input::update(){
                 _now_kb[e.key.keysym.scancode] = false;
             break;
             case SDL_QUIT:
-                quit = true;
+				return true;
             break;
             case SDL_MOUSEMOTION:
 				//@TODO(KASPER) e.motion.x is a Sin32
@@ -56,7 +69,7 @@ void Input::update(){
 
 	//VR
 	if (!vr_hmd)
-		return;
+		return false;
 
 	for (vr::TrackedDeviceIndex_t unDevice = 0; unDevice < vr::k_unMaxTrackedDeviceCount; unDevice++)
 	{
@@ -72,6 +85,7 @@ void Input::update(){
 
 	}
 
+	return false;
 }
 
 void Input::update_vr_pose() {
@@ -114,14 +128,6 @@ void Input::update_vr_pose() {
 
 //	std::cout << debug << "\n";
 }
-
-void Input::set_chaperone(vr::IVRChaperone* chaperone) {
-	vr_chaperone = chaperone;
-	vr_chaperone->GetPlayAreaSize(&vr_playarea.x, &vr_playarea.y);
-	std::cout << "playarea = [" << vr_playarea.x << ", " << vr_playarea.y << "]\n";
-}
-
-
 
 //Keyboard
 
@@ -185,6 +191,16 @@ glm::mat4 Input::get_vr_controller_matrix(int controller_index) {
 	int index = _controller_indices[controller_index];
 	return device_matrix[index];
 }
+
+void Input::set_vr_controller_haptic(int controller_index, int axis, float strength) {
+	strength = glm::clamp<float>(strength, 0, 1);
+
+	unsigned short s = strength * 3999;
+
+	int index = _controller_indices[controller_index];
+	vr_hmd->TriggerHapticPulse(index, axis, s);
+}
+
 
 glm::mat4 Input::get_hmd_matrix() {
 	return device_matrix[_hmd_index];

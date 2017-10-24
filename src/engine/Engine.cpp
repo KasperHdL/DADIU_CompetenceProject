@@ -45,9 +45,8 @@ int Engine::initialize(Game* game){
 	VRRenderer *vr_renderer = new VRRenderer();
 	vr_renderer->initialize(window);
 
-	input.set_chaperone(vr::VRChaperone());
+	input.initialize(vr_renderer->m_pHMD, vr::VRChaperone());
 
-	input.vr_hmd = vr_renderer->m_pHMD;
 
     game->initialize(this);
 
@@ -57,7 +56,7 @@ int Engine::initialize(Game* game){
     Uint64 NOW = SDL_GetPerformanceCounter();
     Uint64 LAST = 0;
 
-    while (!input.quit){
+    while (!should_quit){
 
         LAST = NOW;
         NOW = SDL_GetPerformanceCounter();
@@ -90,7 +89,7 @@ int Engine::initialize(Game* game){
 
 
 void Engine::update(float delta_time){
-    input.update();
+	should_quit = input.update();
     
     game->update(delta_time);
 
