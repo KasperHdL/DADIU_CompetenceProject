@@ -33,7 +33,7 @@ class Snake : public Entity{
         vec3 last_movement;
         vec3 input;
 
-        int playarea;
+        vec2 playarea;
         vec3 local_pos;
 
 
@@ -42,32 +42,18 @@ class Snake : public Entity{
         bool is_dead;
 
  
-        Snake(int playarea){ 
+        Snake(vec2 playarea){ 
             this->playarea = playarea;
+
 
             name = "Snake";
 
-            transform->position = origin;
             transform->scale = vec3(.1f);
 
             set_mesh_as_sphere();
 
             color = vec4(1,0,0,1);
 
-            snake_length = 5;
-
-			SnakeTail* last;
-            for(int i = 0; i < snake_length; i++){
-                SnakeTail* t = new (tail.create()) SnakeTail(i);
-				if (i == 0) {
-					t->linked_transform = transform;
-				}
-				else 
-				{
-					t->linked_transform = last->transform;
-				}
-				last = t;
-            }
         } 
 
         void restart(){
@@ -76,22 +62,25 @@ class Snake : public Entity{
             move_delay = start_move_delay;
             move_timer = -move_delay;
 
-            snake_length = 5;
             local_pos = vec3(0);
             transform->position = origin;
 
             input = vec3(1,0,0);
 			last_movement = input;
 
-            for(int i = 0; i < tail.capacity;i++){
-                SnakeTail* t = tail[i];
-                if(t != nullptr){
-                    if(i < snake_length)
-                        t->transform->position = origin;
-                    else
-                        t->transform->position = vec3(10,10,10);
-                }
-            }
+			SnakeTail* last;
+			snake_length = 0;
+			int initial_snake_length = 5;
+			for (int i = 0; i < tail.capacity; i++) {
+				if (i < initial_snake_length){
+					create_tail_piece();
+				}else {
+					SnakeTail* t = tail[i];
+					if (t != nullptr) {
+						t->is_visible = false;
+					}
+				}
+			}
         }
 
         void update(float dt){
@@ -120,27 +109,31 @@ class Snake : public Entity{
 				transform->position = origin + local_pos;
 			}
 
-           // is_dead = collision_check();
+           is_dead = collision_check();
+		  // cout << " == " << (is_dead ? "true" : "false") << "\n";
 
         }
 
         bool collision_check(){
 
+			//cout << "lp [" << local_pos.x << ", " << local_pos.y << ", " << local_pos.z << "]";
+			//cout << "\tps [" << playarea.x << ", " << playarea.y << "]";
+
             //check collision with walls
-            if(glm::abs(local_pos.x) > playarea || glm::abs(local_pos.y) > playarea){
+            if(glm::abs(local_pos.x) > playarea.x / 2.0f || glm::abs(local_pos.z) > playarea.y / 2.0f){
                 return true;
             }
 
             //check with tail
-            for(int i = 0; i < snake_length;i++){
+            for(int i = 2; i < snake_length;i++){
                 SnakeTail* t = tail[i];
                 if(t != nullptr){
-
-                    if(transform->position == t->transform->position){
+                    if(check_collision(transform->position, transform->scale.x, t->transform->position, 0.0f)){
                         return true;
                     }
                 }
             }
+			
 
             return false;
         }
@@ -156,32 +149,48 @@ class Snake : public Entity{
 
 
         void fruit_collected(){
-            snake_length++;
+			create_tail_piece();
 
-            if(tail.count < snake_length){
-                SnakeTail* t = new (tail.create()) SnakeTail(snake_length);
-                t->transform->position = transform->position;
-            }else{
-                SnakeTail* t = tail[snake_length-1];
-                t->transform->position = transform->position;
-
-            }
-
-			tail[snake_length - 1]->linked_transform = tail[snake_length - 2]->transform;
-			
             move_delay *= 0.9f;
         }
 
-        void draw_debug_inspector(float dt, float control_speed){
-            Entity::draw_debug_inspector(dt, control_speed);
+		void create_tail_piece() {
+			snake_length++;
 
-            ImGui::Text("Snake Settings:");
-            ImGui::Separator();
+			SnakeTail* t;
 
-            ImGui::DragFloat("Start Move Delay", &start_move_delay, 0.005f);
-            ImGui::DragFloat("Current Move Delay", &move_delay, 0.005f);
+			if (tail.count < snake_length) {
+				t = new (tail.create()) SnakeTail(snake_length);
+			}
+			else {
+				t = tail[snake_length - 1];
+			}
 
-        }
+			t->transform->position = vec3(-10);
+			t->is_visible = true;
+
+			if(snake_length-2 == -1)
+				tail[snake_length - 1]->linked_transform = transform;
+			else
+				tail[snake_length - 1]->linked_transform = tail[snake_length - 2]->transform;
+
+		}
+
+		inline bool check_collision(vec3 p1, float d1, vec3 p2, float d2) {
+			return length(p1 - p2) < d1 + d2;
+		}
+
+
+		void draw_debug_inspector(float dt, float control_speed) {
+			Entity::draw_debug_inspector(dt, control_speed);
+
+			ImGui::Text("Snake Settings:");
+			ImGui::Separator();
+
+			ImGui::DragFloat("Start Move Delay", &start_move_delay, 0.005f);
+			ImGui::DragFloat("Current Move Delay", &move_delay, 0.005f);
+
+		}
 
  
         ~Snake(){ 

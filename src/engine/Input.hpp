@@ -4,7 +4,6 @@
 #include <SDL.h>
 #include <iostream>
 #include "glm/glm.hpp"
-#include "shared/Matrices.h"
 #include <openvr.h>
 
 class Input{
@@ -40,6 +39,7 @@ public:
 	//VR
 
 	void update_vr_pose();
+	void set_chaperone(vr::IVRChaperone* chaperone);
 
 	enum VRDevice {
 		Invalid,
@@ -54,9 +54,12 @@ public:
 	static VRDevice device_type[vr::k_unMaxTrackedDeviceCount];
 	static glm::mat4 device_matrix[vr::k_unMaxTrackedDeviceCount];
 
+	static glm::vec2 vr_playarea;
+
 	static int num_controllers;
 
 	vr::IVRSystem* vr_hmd;
+	vr::IVRChaperone* vr_chaperone;
 
 	enum VRButton
 	{

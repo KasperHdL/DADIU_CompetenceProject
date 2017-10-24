@@ -45,6 +45,8 @@ int Engine::initialize(Game* game){
 	VRRenderer *vr_renderer = new VRRenderer();
 	vr_renderer->initialize(window);
 
+	input.set_chaperone(vr::VRChaperone());
+
 	input.vr_hmd = vr_renderer->m_pHMD;
 
     game->initialize(this);

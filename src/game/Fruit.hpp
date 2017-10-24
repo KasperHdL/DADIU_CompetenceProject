@@ -17,10 +17,10 @@ class Fruit : public Entity{
         float time;
         float delay;
 
-        int playarea;
+        vec2 playarea;
 
-        Fruit(int playarea){ 
-            this->playarea = playarea;
+        Fruit(vec2 playarea){ 
+            this->playarea = playarea / 2.0f;
 
             name = "Fruit";
 
@@ -51,8 +51,8 @@ class Fruit : public Entity{
                 is_active = true;
 				is_visible = true;
 
-				float x = glm::linearRand<float>(-playarea, playarea);
-				float y = glm::linearRand<float>(-playarea, playarea);
+				float x = glm::linearRand<float>(-playarea.x, playarea.x);
+				float y = glm::linearRand<float>(-playarea.y, playarea.y);
 
                 transform->position = vec3(x, 1, y);
             }

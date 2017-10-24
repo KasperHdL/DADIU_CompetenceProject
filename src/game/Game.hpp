@@ -13,6 +13,7 @@
 #include <game/Snake.hpp>
 #include <game/Fruit.hpp>
 
+#include <openvr.h>
 
 class Game{
     public:
@@ -42,7 +43,8 @@ class Game{
             //debug_camera->transform->rotation = vec3(0.55,6.25,0);
 			//debug_camera->update_camera();
 
-            float playarea = 1;
+            vec2 playarea = Input::vr_playarea;
+
 
             snake = new Snake(playarea);
             fruit = new Fruit(playarea);

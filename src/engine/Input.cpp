@@ -21,6 +21,8 @@ int Input::_hmd_index = -1;
 int Input::_controller_indices[vr::k_unMaxTrackedDeviceCount] = { -1 };
 int Input::num_controllers = 0;
 
+glm::vec2 Input::vr_playarea = glm::vec2();
+
 void Input::update(){
     for(int i = 0; i < 284; i++)
         _last_kb[i] = _now_kb[i];
@@ -112,6 +114,13 @@ void Input::update_vr_pose() {
 
 //	std::cout << debug << "\n";
 }
+
+void Input::set_chaperone(vr::IVRChaperone* chaperone) {
+	vr_chaperone = chaperone;
+	vr_chaperone->GetPlayAreaSize(&vr_playarea.x, &vr_playarea.y);
+	std::cout << "playarea = [" << vr_playarea.x << ", " << vr_playarea.y << "]\n";
+}
+
 
 
 //Keyboard

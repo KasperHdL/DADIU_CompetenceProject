@@ -1,24 +1,15 @@
 #pragma once
-//========= Copyright Valve Corporation ============//
 
 #include <SDL.h>
 #include <GL/glew.h>
 #include <SDL_opengl.h>
-#include "glm/glm.hpp"
 
 #include "impl/GL.hpp"
 #include <SDL_video.h>
 #include <vector>
 
-#if defined( OSX )
-#include <Foundation/Foundation.h>
-#include <AppKit/AppKit.h>
-#include <OpenGL/glu.h>
-// Apple's version of glut.h #undef's APIENTRY, redefine it
-#define APIENTRY
-#else
 #include <GL/glu.h>
-#endif
+
 #include <stdio.h>
 #include <string>
 #include <cstdlib>
@@ -38,9 +29,7 @@
 #include "unistd.h"
 #endif
 
-#ifndef _WIN32
 #define APIENTRY
-#endif
 
 #ifndef _countof
 #define _countof(x) (sizeof(x)/sizeof((x)[0]))
@@ -131,7 +120,8 @@ public:
 
 	Shader* shader;
 
-	vr::IVRSystem *m_pHMD;
+	vr::IVRSystem* m_pHMD;
+	vr::IVRChaperone* chaperone;
 
 private:
 	void _render_pool(DynamicPool<Entity*> pool);
@@ -193,16 +183,16 @@ private: // OpenGL bookkeeping
 
 	struct VertexDataScene
 	{
-		Vector3 position;
-		Vector2 texCoord;
+		vec3 position;
+		vec2 texCoord;
 	};
 
 	struct VertexDataWindow
 	{
-		Vector2 position;
-		Vector2 texCoord;
+		vec2 position;
+		vec2 texCoord;
 
-		VertexDataWindow(const Vector2 & pos, const Vector2 tex) : position(pos), texCoord(tex) {	}
+		VertexDataWindow(const vec2 & pos, const vec2 tex) : position(pos), texCoord(tex) {	}
 	};
 
 	GLuint m_unSceneProgramID;
@@ -982,7 +972,7 @@ void VRRenderer::RenderControllerAxes()
 
 		for (int i = 0; i < 3; ++i)
 		{
-			Vector3 color(0, 0, 0);
+			vec3 color(0, 0, 0);
 			vec4 point(0, 0, 0, 1);
 			point[i] += 0.05f;  // offset in X, Y, Z
 			color[i] = 1.0;  // R, G, B
@@ -1008,7 +998,7 @@ void VRRenderer::RenderControllerAxes()
 
 		vec4 start = mat * vec4(0, 0, -0.02f, 1);
 		vec4 end = mat * vec4(0, 0, -39.f, 1);
-		Vector3 color(.92f, .92f, .71f);
+		vec3 color(.92f, .92f, .71f);
 
 		vertdataarray.push_back(start.x); vertdataarray.push_back(start.y); vertdataarray.push_back(start.z);
 		vertdataarray.push_back(color.x); vertdataarray.push_back(color.y); vertdataarray.push_back(color.z);
@@ -1033,7 +1023,7 @@ void VRRenderer::RenderControllerAxes()
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (const void *)offset);
 
-		offset += sizeof(Vector3);
+		offset += sizeof(vec3);
 		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (const void *)offset);
 
@@ -1133,16 +1123,16 @@ void VRRenderer::SetupCompanionWindow()
 	std::vector<VertexDataWindow> vVerts;
 
 	// left eye verts
-	vVerts.push_back(VertexDataWindow(Vector2(-1, -1), Vector2(0, 1)));
-	vVerts.push_back(VertexDataWindow(Vector2(0, -1), Vector2(1, 1)));
-	vVerts.push_back(VertexDataWindow(Vector2(-1, 1), Vector2(0, 0)));
-	vVerts.push_back(VertexDataWindow(Vector2(0, 1), Vector2(1, 0)));
+	vVerts.push_back(VertexDataWindow(vec2(-1, -1), vec2(0, 1)));
+	vVerts.push_back(VertexDataWindow(vec2(0, -1), vec2(1, 1)));
+	vVerts.push_back(VertexDataWindow(vec2(-1, 1), vec2(0, 0)));
+	vVerts.push_back(VertexDataWindow(vec2(0, 1), vec2(1, 0)));
 
 	// right eye verts
-	vVerts.push_back(VertexDataWindow(Vector2(0, -1), Vector2(0, 1)));
-	vVerts.push_back(VertexDataWindow(Vector2(1, -1), Vector2(1, 1)));
-	vVerts.push_back(VertexDataWindow(Vector2(0, 1), Vector2(0, 0)));
-	vVerts.push_back(VertexDataWindow(Vector2(1, 1), Vector2(1, 0)));
+	vVerts.push_back(VertexDataWindow(vec2(0, -1), vec2(0, 1)));
+	vVerts.push_back(VertexDataWindow(vec2(1, -1), vec2(1, 1)));
+	vVerts.push_back(VertexDataWindow(vec2(0, 1), vec2(0, 0)));
+	vVerts.push_back(VertexDataWindow(vec2(1, 1), vec2(1, 0)));
 
 	GLushort vIndices[] = { 0, 1, 3,   0, 3, 2,   4, 5, 7,   4, 7, 6 };
 	m_uiCompanionWindowIndexSize = _countof(vIndices);
