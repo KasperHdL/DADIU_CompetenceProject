@@ -25,11 +25,6 @@
 
 #include <openvr.h>
 
-#include "shared/lodepng.h"
-#include "shared/Matrices.h"
-#include "shared/pathtools.h"
-
-
 #include <engine/renderer/Shader.hpp>
 #include <engine/God.hpp>
 #include <engine/utils/AssetManager.hpp>
@@ -91,9 +86,9 @@ public:
 	VRRenderer();
 	virtual ~VRRenderer();
 
-	bool BInit(SDL_Window* window);
-	bool BInitGL();
-	bool BInitCompositor();
+	bool initialize(SDL_Window* window);
+	bool initialize_gl();
+	bool initialize_compositor();
 
 	void SetupRenderModels();
 
@@ -104,10 +99,7 @@ public:
 	void ProcessVREvent(const vr::VREvent_t & event);
 	void RenderFrame();
 
-	bool SetupTexturemaps();
-
-	void SetupScene();
-	void AddCubeToScene(Matrix4 mat, std::vector<float> &vertdata);
+	void AddCubeToScene(mat4 mat, std::vector<float> &vertdata);
 	void AddCubeVertex(float fl0, float fl1, float fl2, float fl3, float fl4, std::vector<float> &vertdata);
 
 	void RenderControllerAxes();
@@ -121,20 +113,17 @@ public:
 	void RenderScene(vr::Hmd_Eye nEye);
 	void RenderEntity(Entity* entity);
 
-	Matrix4 GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye);
-	Matrix4 GetHMDMatrixPoseEye(vr::Hmd_Eye nEye);
-	Matrix4 GetCurrentViewProjectionMatrix(vr::Hmd_Eye nEye);
-	void UpdateHMDMatrixPose();
+	mat4 GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye);
+	mat4 GetHMDMatrixPoseEye(vr::Hmd_Eye nEye);
+	mat4 GetCurrentViewProjectionMatrix(vr::Hmd_Eye nEye);
 
-	Matrix4 ConvertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t &matPose);
+	mat4 ConvertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t &matPose);
 
 	GLuint CompileGLShader(const char *pchShaderName, const char *pchVertexShader, const char *pchFragmentShader);
 	bool CreateAllShaders();
 
 	void SetupRenderModelForTrackedDevice(vr::TrackedDeviceIndex_t unTrackedDeviceIndex);
 	VRRenderModel *FindOrLoadRenderModel(const char *pchRenderModelName);
-
-	mat4 ConvertToMat4(Matrix4 matPose);
 
 	mat4 current_model_transform;
 	mat4 current_view_transform;
@@ -143,13 +132,10 @@ public:
 	Shader* shader;
 
 	vr::IVRSystem *m_pHMD;
-	Matrix4 m_rmat4DevicePose[vr::k_unMaxTrackedDeviceCount];
 
 private:
 	void _render_pool(DynamicPool<Entity*> pool);
-
-
-
+	
 	bool m_bDebugOpenGL;
 	bool m_bVerbose;
 	bool m_bPerf;
@@ -158,7 +144,7 @@ private:
 	vr::IVRRenderModels *m_pRenderModels;
 	std::string m_strDriver;
 	std::string m_strDisplay;
-	vr::TrackedDevicePose_t m_rTrackedDevicePose[vr::k_unMaxTrackedDeviceCount];
+
 	bool m_rbShowTrackedDevice[vr::k_unMaxTrackedDeviceCount];
 
 private: // SDL bookkeeping
@@ -169,14 +155,7 @@ private: // SDL bookkeeping
 	SDL_GLContext m_pContext;
 
 private: // OpenGL bookkeeping
-	int m_iTrackedControllerCount;
-	int m_iTrackedControllerCount_Last;
-	int m_iValidPoseCount;
-	int m_iValidPoseCount_Last;
 	bool m_bShowCubes;
-
-	std::string m_strPoseClasses;                            // what classes we saw poses for this frame
-	char m_rDevClassChar[vr::k_unMaxTrackedDeviceCount];   // for each device, a character representing its class
 
 	int m_iSceneVolumeWidth;
 	int m_iSceneVolumeHeight;
@@ -204,13 +183,13 @@ private: // OpenGL bookkeeping
 	GLuint m_unControllerVAO;
 	unsigned int m_uiControllerVertcount;
 
-	Matrix4 m_mat4HMDPose;
-	Matrix4 m_mat4eyePosLeft;
-	Matrix4 m_mat4eyePosRight;
+	mat4 m_mat4HMDPose;
+	mat4 m_mat4eyePosLeft;
+	mat4 m_mat4eyePosRight;
 
-	Matrix4 m_mat4ProjectionCenter;
-	Matrix4 m_mat4ProjectionLeft;
-	Matrix4 m_mat4ProjectionRight;
+	mat4 m_mat4ProjectionCenter;
+	mat4 m_mat4ProjectionLeft;
+	mat4 m_mat4ProjectionRight;
 
 	struct VertexDataScene
 	{
@@ -298,19 +277,11 @@ VRRenderer::VRRenderer()
 	, m_nSceneMatrixLocation(-1)
 	, m_nControllerMatrixLocation(-1)
 	, m_nRenderModelMatrixLocation(-1)
-	, m_iTrackedControllerCount(0)
-	, m_iTrackedControllerCount_Last(-1)
-	, m_iValidPoseCount(0)
-	, m_iValidPoseCount_Last(-1)
 	, m_iSceneVolumeInit(20)
-	, m_strPoseClasses("")
 	, m_bShowCubes(true)
 {
 
 		m_bDebugOpenGL = true;
-		
-	// other initialization tasks are done in BInit
-	memset(m_rDevClassChar, 0, sizeof(m_rDevClassChar));
 };
 
 
@@ -345,7 +316,7 @@ std::string GetTrackedDeviceString(vr::IVRSystem *pHmd, vr::TrackedDeviceIndex_t
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-bool VRRenderer::BInit(SDL_Window* window)
+bool VRRenderer::initialize(SDL_Window* window)
 {
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
 	{
@@ -449,13 +420,13 @@ bool VRRenderer::BInit(SDL_Window* window)
 	// 		m_MillisecondsTimer.start(1, this);
 	// 		m_SecondsTimer.start(1000, this);
 
-	if (!BInitGL())
+	if (!initialize_gl())
 	{
 		printf("%s - Unable to initialize OpenGL!\n", __FUNCTION__);
 		return false;
 	}
 
-	if (!BInitCompositor())
+	if (!initialize_compositor())
 	{
 		printf("%s - Failed to initialize VR Compositor!\n", __FUNCTION__);
 		return false;
@@ -471,15 +442,14 @@ bool VRRenderer::BInit(SDL_Window* window)
 //          If failure occurred in a module other than shaders, the function
 //          may return true or throw an error. 
 //-----------------------------------------------------------------------------
-bool VRRenderer::BInitGL()
+bool VRRenderer::initialize_gl()
 {
 	
 
 	if (!CreateAllShaders())
 		return false;
 
-	SetupTexturemaps();
-	SetupScene();
+	//SetupTexturemaps();
 	SetupCameras();
 	SetupStereoRenderTargets();
 	SetupCompanionWindow();
@@ -493,7 +463,7 @@ bool VRRenderer::BInitGL()
 // Purpose: Initialize Compositor. Returns true if the compositor was
 //          successfully initialized, false otherwise.
 //-----------------------------------------------------------------------------
-bool VRRenderer::BInitCompositor()
+bool VRRenderer::initialize_compositor()
 {
 	vr::EVRInitError peError = vr::VRInitError_None;
 
@@ -576,13 +546,8 @@ void VRRenderer::Shutdown()
 		}
 	}
 
-	if (m_pCompanionWindow)
-	{
-		SDL_DestroyWindow(m_pCompanionWindow);
 		m_pCompanionWindow = NULL;
-	}
-
-	SDL_Quit();
+	
 }
 
 //-----------------------------------------------------------------------------
@@ -694,17 +659,6 @@ void VRRenderer::RenderFrame()
 		glFlush();
 		glFinish();
 	}
-
-	// Spew out the controller and pose count whenever they change.
-	if (m_iTrackedControllerCount != m_iTrackedControllerCount_Last || m_iValidPoseCount != m_iValidPoseCount_Last)
-	{
-		m_iValidPoseCount_Last = m_iValidPoseCount;
-		m_iTrackedControllerCount_Last = m_iTrackedControllerCount;
-
-		dprintf("PoseCount:%d(%s) Controllers:%d\n", m_iValidPoseCount, m_strPoseClasses.c_str(), m_iTrackedControllerCount);
-	}
-
-	UpdateHMDMatrixPose();
 }
 
 
@@ -924,110 +878,6 @@ bool VRRenderer::CreateAllShaders()
 		&& m_unCompanionWindowProgramID != 0;
 }
 
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-bool VRRenderer::SetupTexturemaps()
-{
-	std::string sExecutableDirectory = Path_StripFilename(Path_GetExecutablePath());
-	std::string strFullPath = Path_MakeAbsolute("../cube_texture.png", sExecutableDirectory);
-
-	std::vector<unsigned char> imageRGBA;
-	unsigned nImageWidth, nImageHeight;
-	unsigned nError = lodepng::decode(imageRGBA, nImageWidth, nImageHeight, strFullPath.c_str());
-
-	if (nError != 0)
-		return false;
-
-	glGenTextures(1, &m_iTexture);
-	glBindTexture(GL_TEXTURE_2D, m_iTexture);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, nImageWidth, nImageHeight,
-		0, GL_RGBA, GL_UNSIGNED_BYTE, &imageRGBA[0]);
-
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-
-	GLfloat fLargest;
-	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &fLargest);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, fLargest);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	return (m_iTexture != 0);
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: create a sea of cubes
-//-----------------------------------------------------------------------------
-void VRRenderer::SetupScene()
-{
-	if (!m_pHMD)
-		return;
-
-	std::vector<float> vertdataarray;
-
-	Matrix4 matScale;
-	matScale.scale(m_fScale, m_fScale, m_fScale);
-	Matrix4 matTransform;
-	matTransform.translate(0, 0, 0);
-		/*
-		-((float)m_iSceneVolumeWidth * m_fScaleSpacing) / 2.f,
-		-((float)m_iSceneVolumeHeight * m_fScaleSpacing) / 2.f,
-		-((float)m_iSceneVolumeDepth * m_fScaleSpacing) / 2.f);
-
-		*/
-	Matrix4 mat = matScale * matTransform;
-
-	AddCubeToScene(mat, vertdataarray);
-
-	/*
-	for (int z = 0; z< m_iSceneVolumeDepth; z++)
-	{
-		for (int y = 0; y< m_iSceneVolumeHeight; y++)
-		{
-			for (int x = 0; x< m_iSceneVolumeWidth; x++)
-			{
-				AddCubeToScene(mat, vertdataarray);
-				mat = mat * Matrix4().translate(m_fScaleSpacing, 0, 0);
-			}
-			mat = mat * Matrix4().translate(-((float)m_iSceneVolumeWidth) * m_fScaleSpacing, m_fScaleSpacing, 0);
-		}
-		mat = mat * Matrix4().translate(0, -((float)m_iSceneVolumeHeight) * m_fScaleSpacing, m_fScaleSpacing);
-	}
-	*/
-	m_uiVertcount = vertdataarray.size() / 5;
-
-	glGenVertexArrays(1, &m_unSceneVAO);
-	glBindVertexArray(m_unSceneVAO);
-
-	glGenBuffers(1, &m_glSceneVertBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, m_glSceneVertBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertdataarray.size(), &vertdataarray[0], GL_STATIC_DRAW);
-
-	GLsizei stride = sizeof(VertexDataScene);
-	uintptr_t offset = 0;
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (const void *)offset);
-
-	offset += sizeof(Vector3);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (const void *)offset);
-
-	glBindVertexArray(0);
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-
-}
-
-
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
@@ -1044,18 +894,18 @@ void VRRenderer::AddCubeVertex(float fl0, float fl1, float fl2, float fl3, float
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void VRRenderer::AddCubeToScene(Matrix4 mat, std::vector<float> &vertdata)
+void VRRenderer::AddCubeToScene(mat4 mat, std::vector<float> &vertdata)
 {
-	// Matrix4 mat( outermat.data() );
+	// mat4 mat( outermat.data() );
 
-	Vector4 A = mat * Vector4(0, 0, 0, 1);
-	Vector4 B = mat * Vector4(1, 0, 0, 1);
-	Vector4 C = mat * Vector4(1, 1, 0, 1);
-	Vector4 D = mat * Vector4(0, 1, 0, 1);
-	Vector4 E = mat * Vector4(0, 0, 1, 1);
-	Vector4 F = mat * Vector4(1, 0, 1, 1);
-	Vector4 G = mat * Vector4(1, 1, 1, 1);
-	Vector4 H = mat * Vector4(0, 1, 1, 1);
+	vec4 A = mat * vec4(0, 0, 0, 1);
+	vec4 B = mat * vec4(1, 0, 0, 1);
+	vec4 C = mat * vec4(1, 1, 0, 1);
+	vec4 D = mat * vec4(0, 1, 0, 1);
+	vec4 E = mat * vec4(0, 0, 1, 1);
+	vec4 F = mat * vec4(1, 0, 1, 1);
+	vec4 G = mat * vec4(1, 1, 1, 1);
+	vec4 H = mat * vec4(0, 1, 1, 1);
 
 	// triangles instead of quads
 	AddCubeVertex(E.x, E.y, E.z, 0, 1, vertdata); //Front
@@ -1114,7 +964,6 @@ void VRRenderer::RenderControllerAxes()
 	std::vector<float> vertdataarray;
 
 	m_uiControllerVertcount = 0;
-	m_iTrackedControllerCount = 0;
 
 	for (vr::TrackedDeviceIndex_t unTrackedDevice = vr::k_unTrackedDeviceIndex_Hmd + 1; unTrackedDevice < vr::k_unMaxTrackedDeviceCount; ++unTrackedDevice)
 	{
@@ -1124,19 +973,17 @@ void VRRenderer::RenderControllerAxes()
 		if (m_pHMD->GetTrackedDeviceClass(unTrackedDevice) != vr::TrackedDeviceClass_Controller)
 			continue;
 
-		m_iTrackedControllerCount += 1;
-
-		if (!m_rTrackedDevicePose[unTrackedDevice].bPoseIsValid)
+		if (!Input::device_pose[unTrackedDevice].bPoseIsValid)
 			continue;
 
-		const Matrix4 & mat = m_rmat4DevicePose[unTrackedDevice];
+		const mat4 & mat = Input::device_matrix[unTrackedDevice];
 
-		Vector4 center = mat * Vector4(0, 0, 0, 1);
+		vec4 center = mat * vec4(0, 0, 0, 1);
 
 		for (int i = 0; i < 3; ++i)
 		{
 			Vector3 color(0, 0, 0);
-			Vector4 point(0, 0, 0, 1);
+			vec4 point(0, 0, 0, 1);
 			point[i] += 0.05f;  // offset in X, Y, Z
 			color[i] = 1.0;  // R, G, B
 			point = mat * point;
@@ -1159,8 +1006,8 @@ void VRRenderer::RenderControllerAxes()
 			m_uiControllerVertcount += 2;
 		}
 
-		Vector4 start = mat * Vector4(0, 0, -0.02f, 1);
-		Vector4 end = mat * Vector4(0, 0, -39.f, 1);
+		vec4 start = mat * vec4(0, 0, -0.02f, 1);
+		vec4 end = mat * vec4(0, 0, -39.f, 1);
 		Vector3 color(.92f, .92f, .71f);
 
 		vertdataarray.push_back(start.x); vertdataarray.push_back(start.y); vertdataarray.push_back(start.z);
@@ -1428,43 +1275,36 @@ void VRRenderer::RenderScene(vr::Hmd_Eye nEye)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 
-	if (m_bShowCubes)
-	{
-		shader->use();
+
+
+	shader->use();
 		
-		current_model_transform = ConvertToMat4(m_mat4HMDPose);
+	current_model_transform = Input::get_hmd_matrix();
 
-		if (nEye == vr::Eye_Left)
-		{
-			current_view_transform = ConvertToMat4(m_mat4eyePosLeft);
-			current_projection_transform = ConvertToMat4(m_mat4ProjectionLeft);
-		}
-		else if (nEye == vr::Eye_Right)
-		{
-			current_view_transform = ConvertToMat4(m_mat4eyePosRight);
-			current_projection_transform = ConvertToMat4(m_mat4ProjectionRight);
-		}
-
-
-		Mesh::get_cube()->bind();
-		_render_pool(God::cube_mesh_entities);
-
-		Mesh::get_sphere()->bind();
-		_render_pool(God::sphere_mesh_entities);
-
-		Mesh::get_quad()->bind();
-		_render_pool(God::quad_mesh_entities);
-
-		/*
-		glUseProgram(m_unSceneProgramID);
-
-		glUniformMatrix4fv(m_nSceneMatrixLocation, 1, GL_FALSE, GetCurrentViewProjectionMatrix(nEye).get());
-		glBindVertexArray(m_unSceneVAO);
-		//glBindTexture(GL_TEXTURE_2D, m_iTexture);
-		glDrawArrays(GL_TRIANGLES, 0, m_uiVertcount);
-		glBindVertexArray(0);
-		*/
+	if (nEye == vr::Eye_Left)
+	{
+		current_view_transform = m_mat4eyePosLeft;
+		current_projection_transform = m_mat4ProjectionLeft;
 	}
+	else if (nEye == vr::Eye_Right)
+	{
+		current_view_transform = m_mat4eyePosRight;
+		current_projection_transform = m_mat4ProjectionRight;
+	}
+
+	mat4 mvp = current_projection_transform * current_view_transform * current_model_transform;
+
+
+	Mesh::get_cube()->bind();
+	_render_pool(God::cube_mesh_entities);
+
+	Mesh::get_sphere()->bind();
+	_render_pool(God::sphere_mesh_entities);
+
+	Mesh::get_quad()->bind();
+	_render_pool(God::quad_mesh_entities);
+
+
 
 	bool bIsInputCapturedByAnotherProcess = m_pHMD->IsInputFocusCapturedByAnotherProcess();
 
@@ -1472,7 +1312,7 @@ void VRRenderer::RenderScene(vr::Hmd_Eye nEye)
 	{
 		// draw the controller axis lines
 		glUseProgram(m_unControllerTransformProgramID);
-		glUniformMatrix4fv(m_nControllerMatrixLocation, 1, GL_FALSE, GetCurrentViewProjectionMatrix(nEye).get());
+		glUniformMatrix4fv(m_nControllerMatrixLocation, 1, GL_FALSE, glm::value_ptr(mvp));
 		glBindVertexArray(m_unControllerVAO);
 		glDrawArrays(GL_LINES, 0, m_uiControllerVertcount);
 		glBindVertexArray(0);
@@ -1486,16 +1326,16 @@ void VRRenderer::RenderScene(vr::Hmd_Eye nEye)
 		if (!m_rTrackedDeviceToRenderModel[unTrackedDevice] || !m_rbShowTrackedDevice[unTrackedDevice])
 			continue;
 
-		const vr::TrackedDevicePose_t & pose = m_rTrackedDevicePose[unTrackedDevice];
+		const vr::TrackedDevicePose_t & pose = Input::device_pose[unTrackedDevice];
 		if (!pose.bPoseIsValid)
 			continue;
 
-		if (bIsInputCapturedByAnotherProcess && m_pHMD->GetTrackedDeviceClass(unTrackedDevice) == vr::TrackedDeviceClass_Controller)
+		if (bIsInputCapturedByAnotherProcess && Input::device_type[unTrackedDevice] == vr::TrackedDeviceClass_Controller)
 			continue;
 
-		const Matrix4 & matDeviceToTracking = m_rmat4DevicePose[unTrackedDevice];
-		Matrix4 matMVP = GetCurrentViewProjectionMatrix(nEye) * matDeviceToTracking;
-		glUniformMatrix4fv(m_nRenderModelMatrixLocation, 1, GL_FALSE, matMVP.get());
+		const mat4 & matDeviceToTracking = Input::device_matrix[unTrackedDevice];
+		mat4 matMVP = mvp * matDeviceToTracking;
+		glUniformMatrix4fv(m_nRenderModelMatrixLocation, 1, GL_FALSE, glm::value_ptr(matMVP));
 
 		m_rTrackedDeviceToRenderModel[unTrackedDevice]->Draw();
 	}
@@ -1585,14 +1425,14 @@ void VRRenderer::RenderCompanionWindow()
 //-----------------------------------------------------------------------------
 // Purpose: Gets a Matrix Projection Eye with respect to nEye.
 //-----------------------------------------------------------------------------
-Matrix4 VRRenderer::GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye)
+mat4 VRRenderer::GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye)
 {
 	if (!m_pHMD)
-		return Matrix4();
+		return mat4();
 
 	vr::HmdMatrix44_t mat = m_pHMD->GetProjectionMatrix(nEye, m_fNearClip, m_fFarClip);
 
-	return Matrix4(
+	return mat4(
 		mat.m[0][0], mat.m[1][0], mat.m[2][0], mat.m[3][0],
 		mat.m[0][1], mat.m[1][1], mat.m[2][1], mat.m[3][1],
 		mat.m[0][2], mat.m[1][2], mat.m[2][2], mat.m[3][2],
@@ -1604,20 +1444,20 @@ Matrix4 VRRenderer::GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye)
 //-----------------------------------------------------------------------------
 // Purpose: Gets an HMDMatrixPoseEye with respect to nEye.
 //-----------------------------------------------------------------------------
-Matrix4 VRRenderer::GetHMDMatrixPoseEye(vr::Hmd_Eye nEye)
+mat4 VRRenderer::GetHMDMatrixPoseEye(vr::Hmd_Eye nEye)
 {
 	if (!m_pHMD)
-		return Matrix4();
+		return mat4();
 
 	vr::HmdMatrix34_t matEyeRight = m_pHMD->GetEyeToHeadTransform(nEye);
-	Matrix4 matrixObj(
+	mat4 matrixObj(
 		matEyeRight.m[0][0], matEyeRight.m[1][0], matEyeRight.m[2][0], 0.0,
 		matEyeRight.m[0][1], matEyeRight.m[1][1], matEyeRight.m[2][1], 0.0,
 		matEyeRight.m[0][2], matEyeRight.m[1][2], matEyeRight.m[2][2], 0.0,
 		matEyeRight.m[0][3], matEyeRight.m[1][3], matEyeRight.m[2][3], 1.0f
 	);
 
-	return matrixObj.invert();
+	return inverse(matrixObj);
 }
 
 
@@ -1625,9 +1465,9 @@ Matrix4 VRRenderer::GetHMDMatrixPoseEye(vr::Hmd_Eye nEye)
 // Purpose: Gets a Current View Projection Matrix with respect to nEye,
 //          which may be an Eye_Left or an Eye_Right.
 //-----------------------------------------------------------------------------
-Matrix4 VRRenderer::GetCurrentViewProjectionMatrix(vr::Hmd_Eye nEye)
+mat4 VRRenderer::GetCurrentViewProjectionMatrix(vr::Hmd_Eye nEye)
 {
-	Matrix4 matMVP;
+	mat4 matMVP;
 	if (nEye == vr::Eye_Left)
 	{
 		matMVP = m_mat4ProjectionLeft * m_mat4eyePosLeft * m_mat4HMDPose;
@@ -1638,67 +1478,6 @@ Matrix4 VRRenderer::GetCurrentViewProjectionMatrix(vr::Hmd_Eye nEye)
 	}
 
 	return matMVP;
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void VRRenderer::UpdateHMDMatrixPose()
-{
-	if (!m_pHMD)
-		return;
-
-	vr::VRCompositor()->WaitGetPoses(m_rTrackedDevicePose, vr::k_unMaxTrackedDeviceCount, NULL, 0);
-
-	int controller_count = 0;
-	m_iValidPoseCount = 0;
-	m_strPoseClasses = "";
-	for (int nDevice = 0; nDevice < vr::k_unMaxTrackedDeviceCount; ++nDevice)
-	{
-		if (m_rTrackedDevicePose[nDevice].bPoseIsValid)
-		{
-			m_iValidPoseCount++;
-			m_rmat4DevicePose[nDevice] = ConvertSteamVRMatrixToMatrix4(m_rTrackedDevicePose[nDevice].mDeviceToAbsoluteTracking);
-			if (m_rDevClassChar[nDevice] == 0)
-			{
-				switch (m_pHMD->GetTrackedDeviceClass(nDevice))
-				{
-					case vr::TrackedDeviceClass_Controller:        
-						m_rDevClassChar[nDevice] = 'C'; 
-						break;
-					case vr::TrackedDeviceClass_HMD:               
-						m_rDevClassChar[nDevice] = 'H'; 
-						break;
-					case vr::TrackedDeviceClass_Invalid:           m_rDevClassChar[nDevice] = 'I'; break;
-					case vr::TrackedDeviceClass_GenericTracker:    m_rDevClassChar[nDevice] = 'G'; break;
-					case vr::TrackedDeviceClass_TrackingReference: m_rDevClassChar[nDevice] = 'T'; break;
-					default:                                       m_rDevClassChar[nDevice] = '?'; break;
-				}
-			}
-
-			switch (m_pHMD->GetTrackedDeviceClass(nDevice))
-			{
-				case vr::TrackedDeviceClass_Controller:
-					if (controller_count < 2) {
-						Input::controller_matrix[controller_count++] = ConvertToMat4(m_rmat4DevicePose[nDevice]);
-					}
-					break;
-				case vr::TrackedDeviceClass_HMD:
-					Input::head_matrix = ConvertToMat4(m_rmat4DevicePose[nDevice]);
-
-					break;
-				default: break;
-			}
-			m_strPoseClasses += m_rDevClassChar[nDevice];
-		}
-	}
-
-	if (m_rTrackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
-	{
-		m_mat4HMDPose = m_rmat4DevicePose[vr::k_unTrackedDeviceIndex_Hmd];
-		m_mat4HMDPose.invert();
-	}
 }
 
 
@@ -1820,25 +1599,13 @@ void VRRenderer::SetupRenderModels()
 //-----------------------------------------------------------------------------
 // Purpose: Converts a SteamVR matrix to our local matrix class
 //-----------------------------------------------------------------------------
-Matrix4 VRRenderer::ConvertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t &matPose)
+mat4 VRRenderer::ConvertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t &matPose)
 {
-	Matrix4 matrixObj(
+	mat4 matrixObj(
 		matPose.m[0][0], matPose.m[1][0], matPose.m[2][0], 0.0,
 		matPose.m[0][1], matPose.m[1][1], matPose.m[2][1], 0.0,
 		matPose.m[0][2], matPose.m[1][2], matPose.m[2][2], 0.0,
 		matPose.m[0][3], matPose.m[1][3], matPose.m[2][3], 1.0f
-	);
-	return matrixObj;
-}
-
-mat4 VRRenderer::ConvertToMat4(Matrix4 matPose)
-{
-
-	mat4 matrixObj = mat4(
-		matPose[0], matPose[1], matPose[2], matPose[3],
-		matPose[4], matPose[5], matPose[6], matPose[7],
-		matPose[8], matPose[9], matPose[10], matPose[11],
-		matPose[12], matPose[13], matPose[14], matPose[15]
 	);
 	return matrixObj;
 }

@@ -43,7 +43,7 @@ int Engine::initialize(Game* game){
     }
 
 	VRRenderer *vr_renderer = new VRRenderer();
-	vr_renderer->BInit(window);
+	vr_renderer->initialize(window);
 
 	input.vr_hmd = vr_renderer->m_pHMD;
 
@@ -65,10 +65,10 @@ int Engine::initialize(Game* game){
 
 		vr_renderer->HandleInput();
         update(delta_time);
-
-
-
+		
 		vr_renderer->RenderFrame();
+
+		input.update_vr_pose();
     }
 
 	SDL_StopTextInput();
@@ -76,6 +76,7 @@ int Engine::initialize(Game* game){
     AssetManager::cleanup();
 
 	vr_renderer->Shutdown();
+
     // Close and destroy the window
     SDL_DestroyWindow(window);
 

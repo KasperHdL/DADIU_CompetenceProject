@@ -5,41 +5,58 @@
 #include <iostream>
 #include "glm/glm.hpp"
 #include "shared/Matrices.h"
-
-namespace vr {
-	class IVRSystem;
-	struct VRControllerState001_t;
-};
-
+#include <openvr.h>
 
 class Input{
 private:
+	//keyboard
     static bool _last_kb[];
     static bool _now_kb[];
 
+	//mouse
     static glm::vec2 _last_mouse;
     static glm::vec2 _current_mouse;
 
-	//vr
+	//VR
 	static vr::VRControllerState001_t _vr_controller[];
 
 public:
 
-	static glm::mat4 head_matrix;
-	static glm::mat4 controller_matrix[2];
-
-	vr::IVRSystem* vr_hmd;
 
     bool quit = false;
 
     void update();
 
+
+	//keyboard
     static bool get_key_down(Uint8 key);
     static bool get_key_on_down(Uint8 key);
 
+	//mouse
     static glm::vec2 get_mouse_delta();
     static glm::vec2 get_mouse_position();
 
+
+	//VR
+
+	void update_vr_pose();
+
+	enum VRDevice {
+		Invalid,
+		HMD,
+		Controller,
+		GenericTracker,
+		TrackingReference,
+		DisplayRedirect,
+	};
+
+	static vr::TrackedDevicePose_t device_pose[vr::k_unMaxTrackedDeviceCount];
+	static VRDevice device_type[vr::k_unMaxTrackedDeviceCount];
+	static glm::mat4 device_matrix[vr::k_unMaxTrackedDeviceCount];
+
+	static int num_controllers;
+
+	vr::IVRSystem* vr_hmd;
 
 	enum VRButton
 	{
@@ -66,7 +83,7 @@ public:
 
 		Dashboard_Back = Grip,
 
-		Max = 64
+		Max = 64,
 	};
 
 	static bool get_vr_button_down(int controller_index, VRButton button);
@@ -74,5 +91,15 @@ public:
 
 	static glm::vec2 get_vr_axis(int controller_index, int axis_index);
 
+
+	static glm::mat4 get_vr_controller_matrix(int controller_index);
+	static glm::mat4 get_hmd_matrix();
+
+private:
+
+	static int _hmd_index;
+	static int _controller_indices[];
+
+	glm::mat4 convert_HmdMatrix_to_mat4(vr::HmdMatrix34_t &matPose);
 
 };

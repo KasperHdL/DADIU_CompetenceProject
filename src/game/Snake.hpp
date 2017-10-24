@@ -104,7 +104,7 @@ class Snake : public Entity{
 			if (move_timer >= move_delay) {
 				move_timer -= move_delay;
 
-				vec3 controller = vec3(Input::controller_matrix[0][3]);
+				vec3 controller = vec3(Input::get_vr_controller_matrix(0)[3]);
 
 				if (glm::length(controller) != 0) {
 
