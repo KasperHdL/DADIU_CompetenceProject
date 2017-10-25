@@ -182,8 +182,6 @@ void Renderer::_render_entity(Entity* entity){
     shader->set_uniform("ambientLight", ambient_light);
     shader->set_uniform("color", entity->color);
 
-    shader->set_uniform("specularity", entity->specularity);
-
     //lights
     for(int i = 0; i < 4;i++){
         Light* l = God::lights[i];

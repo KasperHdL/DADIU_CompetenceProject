@@ -519,7 +519,6 @@ void VRRenderer::create_all_shaders()
 
 		scene_shader->init_uniform("ambientLight", Shader::Uniform_Type::Vec4);
 		scene_shader->init_uniform("color", Shader::Uniform_Type::Vec4);
-		scene_shader->init_uniform("specularity", Shader::Uniform_Type::Float);
 
 
 		for (int i = 0; i < 4; i++) {
@@ -840,7 +839,7 @@ void VRRenderer::render_scene(Eye eye)
 void VRRenderer::render_companion_window()
 {
 	glDisable(GL_DEPTH_TEST);
-
+	glViewport(0, 0, companion_window_width, companion_window_height);
 	glBindVertexArray(companion_window_vao);
 	window_shader->use();
 
@@ -877,10 +876,12 @@ void VRRenderer::_render_pool(DynamicPool<Entity*> pool, bool bind_mesh) {
 					scene_shader->set_uniform("model", model);
 					scene_shader->set_uniform("view", current_view_transform);
 					scene_shader->set_uniform("projection", current_projection_transform);
-					scene_shader->set_uniform("normalMat", transpose(inverse((glm::mat3)model)));
+
+					mat3 normalMat = transpose(inverse((glm::mat3)(current_view_transform * model)));
+					scene_shader->set_uniform("normalMat", normalMat);
 
 
-					scene_shader->set_uniform("ambientLight", vec4(0.1f));
+					scene_shader->set_uniform("ambientLight", vec4(0.3f));
 
 					scene_shader->set_uniform("color", e->color);
 
@@ -889,7 +890,7 @@ void VRRenderer::_render_pool(DynamicPool<Entity*> pool, bool bind_mesh) {
 						Light* l = God::lights[i];
 						if (l != nullptr) {
 
-							vec4 light_pos_type = vec4(l->position, (int)l->type);
+							vec4 light_pos_type = vec4(normalMat * l->position, (int)l->type);
 							vec4 light_color_range = vec4(l->color * l->intensity, l->range);
 
 							scene_shader->set_uniform("lightPosType[" + to_string(i) + "]", light_pos_type);

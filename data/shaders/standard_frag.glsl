@@ -12,8 +12,6 @@ uniform vec4 color;
 uniform vec4 lightPosType[4];
 uniform vec4 lightColorRange[4];
 
-uniform float specularity;
-
 vec3 computeLight(){
     vec3 lightColor = ambientLight.xyz;
     vec3 normal = normalize(vNormal);

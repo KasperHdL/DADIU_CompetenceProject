@@ -31,7 +31,6 @@ class Fruit : public Entity{
 
 			is_visible = false;
             color = vec4(1,.5f,0,0);
-            specularity = 10;
         } 
 
         void restart(){

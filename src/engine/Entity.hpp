@@ -33,7 +33,6 @@ public:
 
     //@TODO to be removed
     vec4 color = vec4(1,1,1,1);
-    float specularity = 50;
 
 
     Entity(){
@@ -67,7 +66,6 @@ public:
         ImGui::DragFloat3("Rotation", &transform->rotation.x, 0.01f);
 
         ImGui::ColorEdit4("Color", &color.x);
-        ImGui::DragFloat("Specularity", &specularity, 0.01f);
 
     }
 
