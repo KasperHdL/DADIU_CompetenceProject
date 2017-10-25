@@ -49,14 +49,14 @@ class Game{
             snake = new Snake(playarea);
             fruit = new Fruit(playarea);
 
-            Light* sun =  new (God::lights.create()) Light(Light::Type::Directional, vec3(0,-1,.25f), vec3(1,1,1), .15f);
+            Light* sun =  new (God::lights.create()) Light(Light::Type::Directional, vec3(0,-1,.25f), vec3(1,1,1), .5f);
 
 			Entity* e = new (walls.create()) Entity();
 
 			e->name = "Wall";
 
 			e->transform->position = vec3(0, 0, 0);
-			e->transform->scale = vec3(2);
+			e->transform->scale = vec3(playarea.x / 2.0f, playarea.y / 2.0f, 1);
 			e->transform->rotation = vec3(0, glm::half_pi<float>(), 0);
 
 			e->set_mesh_as_quad();

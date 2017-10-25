@@ -13,6 +13,7 @@
 #include <engine/renderer/imgui/imgui_impl_sdl_gl3.hpp>
 #include <engine/renderer/Mesh.hpp>
 #include <engine/renderer/Light.hpp>
+#include <engine/renderer/Camera.hpp>
 
 class DebugInterface{
     public:
@@ -20,9 +21,11 @@ class DebugInterface{
         Game* game;
         SDL_Window* window;
 
-
         bool enabled = true;
         int n;
+		
+		bool use_camera = false;
+		Camera* camera;
 
         //profile plots
         static const int array_length = 500;
@@ -37,17 +40,6 @@ class DebugInterface{
             float update_sum = 0;
             Timer update_timer;
             
-        //fog
-        float fog_intensity = 0.004;
-        vec3 fog_color = vec3(.3f, .4f, .3f);
-        float position_rand = 2;
-
-        vec3 ray_att = vec3(0.2f, 0.01f, 0.001f);
-        float ray_rand = 1;
-        float light_color_rand = 0;
-
-        float kernel[9] = {0,0,0,0,1,0,0,0,0};
-
         //menu
         bool menu = true;
         bool hierarchy = false;
@@ -76,13 +68,17 @@ class DebugInterface{
 
             this->game = game;
             this->window = window;
+
+			camera = new Camera();
         }
 
         void update(float dt){
             if(Input::get_key_on_down(SDL_SCANCODE_ESCAPE)){ 
                 enabled       = !enabled;
-                if(!menu && !hierarchy && scene_manager && !create) menu = true;
+                if(enabled && !menu && !hierarchy && scene_manager && !create) menu = true;
             }
+
+			if(Input::get_key_on_down(SDL_SCANCODE_F))       use_camera		= !use_camera;
 
             if(Input::get_key_on_down(SDL_SCANCODE_F2 ))     menu           = !menu;
             if(Input::get_key_on_down(SDL_SCANCODE_F3 ))     hierarchy      = !hierarchy;
@@ -106,7 +102,7 @@ class DebugInterface{
                 if(menu){
                     ImGui::Begin("Menu");
                         ImGui::Text("Move on [WASD], [Space] and [Shift]");
-//                        ImGui::Checkbox("Freeze Camera [F]", &game->debug_camera->freeze);
+                        ImGui::Checkbox("Debug Camera [F]", &use_camera);
                         ImGui::Separator();
 
                         ImGui::Checkbox("Debug         [Esc]", &enabled);
@@ -117,36 +113,7 @@ class DebugInterface{
                         ImGui::Checkbox("Profiler      [F6] ", &profiler);
 
                         ImGui::Checkbox("Hotload Shader[F10] ", &hotload_shader);
-
-                        ImGui::Separator();
-
-                        ImGui::Text("Fog");
-                        ImGui::ColorEdit3("Color", &fog_color.r);
-                        ImGui::DragFloat("Intensity", &fog_intensity,0.001f);
-                        ImGui::DragFloat("Position Rand Scalar", &position_rand);
-
-                        ImGui::Separator();
-
-                        ImGui::Text("Raymarching");
-                        ImGui::DragFloat3("Attenuation", &ray_att.x, 0.01f);
-                        ImGui::DragFloat("Rand scalar", &ray_rand, 0.1f);
-
-                        if(ray_att.x <= 0) ray_att.x = 0.2f;
-                        if(ray_att.y <= 0) ray_att.y = 0.01f;
-                        if(ray_att.z <= 0) ray_att.z = 0.001f;
-
-                        if(glm::length(ray_att) == 0) ray_att.x = 0.1f;
-
-                        ImGui::Separator();
-
-                        ImGui::Text("Light Color Random Offset");
-                        ImGui::DragFloat("Light Color Rand", &light_color_rand, 0.01f);
-
-                        ImGui::Separator();
-                        ImGui::Text("Kernel");
-                        ImGui::DragFloat3("[1]", &kernel[0]);
-                        ImGui::DragFloat3("[2]", &kernel[3]);
-                        ImGui::DragFloat3("[3]", &kernel[6]);
+						
                         ImGui::Separator();
 
                     ImGui::End();

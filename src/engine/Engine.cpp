@@ -42,8 +42,20 @@ int Engine::initialize(Game* game){
         return 1;
     }
 
+	debug = new DebugInterface();
+	debug->initialize(window, game);
+
+	//Debug Camera
+	debug->camera->name = "Debug Camera";
+	debug->camera->set_viewport(0, 0, screen_width, screen_height);
+	debug->camera->set_perspective_projection();
+
+	debug->camera->transform->position = vec3(0, -1.2f, -4.4f);
+	debug->camera->transform->rotation = vec3(0, 0.4f, 0);
+
+	//VR Renderer
 	VRRenderer *vr_renderer = new VRRenderer();
-	vr_renderer->initialize(window);
+	vr_renderer->initialize(window, debug);
 
 	input.initialize(vr_renderer->hmd, vr::VRChaperone());
 
@@ -67,12 +79,11 @@ int Engine::initialize(Game* game){
 		vr_renderer->handle_input();
         update(delta_time);
 		
-		vr_renderer->render();
+		vr_renderer->render(delta_time);
 
 		input.update_vr_pose();
     }
 
-	SDL_StopTextInput();
 
     AssetManager::cleanup();
 
@@ -92,8 +103,8 @@ void Engine::update(float delta_time){
 	should_quit = input.update();
     
     game->update(delta_time);
+	debug->update(delta_time);
 
     AssetManager::update();
-
 }
 

@@ -1,12 +1,9 @@
 #pragma once
 
-#include <engine/God.hpp>
 #include <engine/Entity.hpp>
 
-class Camera{
+class Camera : public Entity{
 public:
-
-    Transform* transform;
 
     mat4 view_transform;
     mat4 projection_transform;
@@ -21,10 +18,9 @@ public:
     float far_plane = 1000;
 
     Camera(){
+		name = "Camera";
         view_transform = mat4(1);
         projection_transform = mat4(1);
-
-        transform = new (God::transforms.create()) Transform();
     }
 
     void set_perspective_projection(){
