@@ -45,7 +45,7 @@ int Engine::initialize(Game* game){
 	VRRenderer *vr_renderer = new VRRenderer();
 	vr_renderer->initialize(window);
 
-	input.initialize(vr_renderer->m_pHMD, vr::VRChaperone());
+	input.initialize(vr_renderer->hmd, vr::VRChaperone());
 
 
     game->initialize(this);
@@ -64,10 +64,10 @@ int Engine::initialize(Game* game){
         delta_time = clamp(((NOW - LAST) / (float)SDL_GetPerformanceFrequency() ),0.0f,1.0f);
         time += delta_time;
 
-		vr_renderer->HandleInput();
+		vr_renderer->handle_input();
         update(delta_time);
 		
-		vr_renderer->RenderFrame();
+		vr_renderer->render();
 
 		input.update_vr_pose();
     }
@@ -76,7 +76,7 @@ int Engine::initialize(Game* game){
 
     AssetManager::cleanup();
 
-	vr_renderer->Shutdown();
+	vr_renderer->shutdown();
 
     // Close and destroy the window
     SDL_DestroyWindow(window);

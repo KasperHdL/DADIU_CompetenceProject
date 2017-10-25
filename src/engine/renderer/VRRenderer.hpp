@@ -16,11 +16,12 @@
 
 #include <openvr.h>
 
-#include <engine/renderer/Shader.hpp>
-#include <engine/God.hpp>
-#include <engine/utils/AssetManager.hpp>
 #include <engine/renderer/Mesh.hpp>
+#include <engine/renderer/Shader.hpp>
+#include <engine/renderer/VRRenderModel.hpp>
+#include <engine/utils/AssetManager.hpp>
 #include <engine/Input.hpp>
+#include <engine/God.hpp>
 
 #include "glm/glm.hpp"
 
@@ -44,25 +45,6 @@ void ThreadSleep(unsigned long nMilliseconds)
 #endif
 }
 
-class VRRenderModel
-{
-public:
-	VRRenderModel(const std::string & sRenderModelName);
-	~VRRenderModel();
-
-	bool BInit(const vr::RenderModel_t & vrModel, const vr::RenderModel_TextureMap_t & vrDiffuseTexture);
-	void Cleanup();
-	void Draw();
-	const std::string & GetName() const { return m_sModelName; }
-
-private:
-	GLuint m_glVertBuffer;
-	GLuint m_glIndexBuffer;
-	GLuint m_glVertArray;
-	GLuint m_glTexture;
-	GLsizei m_unVertexCount;
-	std::string m_sModelName;
-};
 
 static bool g_bPrintf = true;
 
@@ -79,149 +61,124 @@ public:
 	bool initialize_gl();
 	bool initialize_compositor();
 
-	void SetupRenderModels();
 
-	void Shutdown();
+	void shutdown();
 
-	void RunMainLoop();
-	void HandleInput();
-	void ProcessVREvent(const vr::VREvent_t & event);
-	void RenderFrame();
+	void handle_input();
+	void process_VREvent(const vr::VREvent_t& event);
+	void render();
 
-	void AddCubeToScene(mat4 mat, std::vector<float> &vertdata);
-	void AddCubeVertex(float fl0, float fl1, float fl2, float fl3, float fl4, std::vector<float> &vertdata);
+	void render_controller_axis();
 
-	void RenderControllerAxes();
+	void setup_render_models();
+	bool setup_stereo_render_targets();
+	void setup_companion_window();
+	void setup_cameras();
 
-	bool SetupStereoRenderTargets();
-	void SetupCompanionWindow();
-	void SetupCameras();
+	void render_stereo_targets();
+	void render_companion_window();
+	void render_scene(vr::Hmd_Eye eye);
+	void render_entity(Entity* entity);
 
-	void RenderStereoTargets();
-	void RenderCompanionWindow();
-	void RenderScene(vr::Hmd_Eye nEye);
-	void RenderEntity(Entity* entity);
+	mat4 get_hmd_projection_eye(vr::Hmd_Eye eye);
+	mat4 get_hmd_pose_eye(vr::Hmd_Eye eye);
 
-	mat4 GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye);
-	mat4 GetHMDMatrixPoseEye(vr::Hmd_Eye nEye);
-	mat4 GetCurrentViewProjectionMatrix(vr::Hmd_Eye nEye);
+	mat4 convert_HmdMatrix_to_mat4(const vr::HmdMatrix34_t& matrix);
 
-	mat4 ConvertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t &matPose);
+	void create_all_shaders();
 
-	GLuint CompileGLShader(const char *pchShaderName, const char *pchVertexShader, const char *pchFragmentShader);
-	bool CreateAllShaders();
-
-	void SetupRenderModelForTrackedDevice(vr::TrackedDeviceIndex_t unTrackedDeviceIndex);
-	VRRenderModel *FindOrLoadRenderModel(const char *pchRenderModelName);
+	void setup_render_model_for_tracked_device(vr::TrackedDeviceIndex_t tracked_device_index);
+	VRRenderModel* find_or_load_render_model(const char* render_model_name);
 
 	mat4 current_model_transform;
 	mat4 current_view_transform;
 	mat4 current_projection_transform;
 
-	Shader* shader;
+	Shader* scene_shader;
+	Shader* window_shader;
+	Shader* render_model_shader;
+	Shader* transform_shader;
 
-	vr::IVRSystem* m_pHMD;
+	vr::IVRSystem* hmd;
 	vr::IVRChaperone* chaperone;
 
 private:
 	void _render_pool(DynamicPool<Entity*> pool);
 	
-	bool m_bDebugOpenGL;
-	bool m_bVerbose;
-	bool m_bPerf;
-	bool m_bVblank;
-	bool m_bGlFinishHack;
-	vr::IVRRenderModels *m_pRenderModels;
-	std::string m_strDriver;
-	std::string m_strDisplay;
+	bool _mode_debug_opengl;
+	bool _mode_verbose;
+	bool _mode_performance;
+	bool _mode_vblank;
+	bool _mode_gl_finish_hack;
 
-	bool m_rbShowTrackedDevice[vr::k_unMaxTrackedDeviceCount];
+	vr::IVRRenderModels* render_model_interface;
+	std::string driver_name;
+	std::string display_name;
+
+	bool show_tracked_device[vr::k_unMaxTrackedDeviceCount];
 
 private: // SDL bookkeeping
-	SDL_Window *m_pCompanionWindow;
-	uint32_t m_nCompanionWindowWidth;
-	uint32_t m_nCompanionWindowHeight;
+	SDL_Window* companion_window;
 
-	SDL_GLContext m_pContext;
+	uint32_t companion_window_width;
+	uint32_t companion_window_height;
+
+	SDL_GLContext context;
 
 private: // OpenGL bookkeeping
-	bool m_bShowCubes;
+	
+	float near_clip;
+	float far_clip;
 
-	int m_iSceneVolumeWidth;
-	int m_iSceneVolumeHeight;
-	int m_iSceneVolumeDepth;
-	float m_fScaleSpacing;
-	float m_fScale;
 
-	int m_iSceneVolumeInit;                                  // if you want something other than the default 20x20x20
+	GLuint companion_window_vao;
+	GLuint companion_window_id_vert_buffer;
+	GLuint companion_window_id_index_buffer;
+	unsigned int companion_window_index_size;
 
-	float m_fNearClip;
-	float m_fFarClip;
+	GLuint controller_vert_buffer;
+	GLuint controller_vao;
+	unsigned int controller_vert_count;
 
-	GLuint m_iTexture;
+	mat4 hmd_pose_matrix;
+	mat4 eye_pos_left_matrix;
+	mat4 eye_pos_right_matrix;
 
-	unsigned int m_uiVertcount;
-
-	GLuint m_glSceneVertBuffer;
-	GLuint m_unSceneVAO;
-	GLuint m_unCompanionWindowVAO;
-	GLuint m_glCompanionWindowIDVertBuffer;
-	GLuint m_glCompanionWindowIDIndexBuffer;
-	unsigned int m_uiCompanionWindowIndexSize;
-
-	GLuint m_glControllerVertBuffer;
-	GLuint m_unControllerVAO;
-	unsigned int m_uiControllerVertcount;
-
-	mat4 m_mat4HMDPose;
-	mat4 m_mat4eyePosLeft;
-	mat4 m_mat4eyePosRight;
-
-	mat4 m_mat4ProjectionCenter;
-	mat4 m_mat4ProjectionLeft;
-	mat4 m_mat4ProjectionRight;
+	mat4 projection_left_matrix;
+	mat4 projection_right_matrix;
 
 	struct VertexDataScene
 	{
 		vec3 position;
-		vec2 texCoord;
+		vec2 texture_coord;
 	};
 
 	struct VertexDataWindow
 	{
 		vec2 position;
-		vec2 texCoord;
+		vec2 texture_coord;
 
-		VertexDataWindow(const vec2 & pos, const vec2 tex) : position(pos), texCoord(tex) {	}
+		VertexDataWindow(const vec2& pos, const vec2 tex) : position(pos), texture_coord(tex) {	}
 	};
 
-	GLuint m_unSceneProgramID;
-	GLuint m_unCompanionWindowProgramID;
-	GLuint m_unControllerTransformProgramID;
-	GLuint m_unRenderModelProgramID;
-
-	GLint m_nSceneMatrixLocation;
-	GLint m_nControllerMatrixLocation;
-	GLint m_nRenderModelMatrixLocation;
-
-	struct FramebufferDesc
+	struct FramebufferDescription
 	{
-		GLuint m_nDepthBufferId;
-		GLuint m_nRenderTextureId;
-		GLuint m_nRenderFramebufferId;
-		GLuint m_nResolveTextureId;
-		GLuint m_nResolveFramebufferId;
+		GLuint depth_buffer_id;
+		GLuint render_texture_id;
+		GLuint render_framebuffer_id;
+		GLuint resolve_texture_id;
+		GLuint resolve_framebuffer_id;
 	};
-	FramebufferDesc leftEyeDesc;
-	FramebufferDesc rightEyeDesc;
+	FramebufferDescription left_eye_description;
+	FramebufferDescription right_eye_description;
 
-	bool CreateFrameBuffer(int nWidth, int nHeight, FramebufferDesc &framebufferDesc);
+	bool CreateFrameBuffer(int width, int height, FramebufferDescription &framebuffer_description);
 
-	uint32_t m_nRenderWidth;
-	uint32_t m_nRenderHeight;
+	uint32_t render_width;
+	uint32_t render_height;
 
-	std::vector< VRRenderModel * > m_vecRenderModels;
-	VRRenderModel *m_rTrackedDeviceToRenderModel[vr::k_unMaxTrackedDeviceCount];
+	std::vector<VRRenderModel*> render_models;
+	VRRenderModel* tracked_device_to_render_model[vr::k_unMaxTrackedDeviceCount];
 };
 
 //-----------------------------------------------------------------------------
@@ -246,32 +203,26 @@ void dprintf(const char *fmt, ...)
 // Purpose: Constructor
 //-----------------------------------------------------------------------------
 VRRenderer::VRRenderer()
-	: m_pCompanionWindow(NULL)
-	, m_pContext(NULL)
-	, m_nCompanionWindowWidth(1280)
-	, m_nCompanionWindowHeight(720)
-	, m_unSceneProgramID(0)
-	, m_unCompanionWindowProgramID(0)
-	, m_unControllerTransformProgramID(0)
-	, m_unRenderModelProgramID(0)
-	, m_pHMD(NULL)
-	, m_pRenderModels(NULL)
-	, m_bDebugOpenGL(false)
-	, m_bVerbose(false)
-	, m_bPerf(false)
-	, m_bVblank(false)
-	, m_bGlFinishHack(true)
-	, m_glControllerVertBuffer(0)
-	, m_unControllerVAO(0)
-	, m_unSceneVAO(0)
-	, m_nSceneMatrixLocation(-1)
-	, m_nControllerMatrixLocation(-1)
-	, m_nRenderModelMatrixLocation(-1)
-	, m_iSceneVolumeInit(20)
-	, m_bShowCubes(true)
+	: companion_window(NULL)
+	, context(NULL)
+
+	, companion_window_width(1280)
+	, companion_window_height(720)
+
+	, hmd(NULL)
+	, render_model_interface(NULL)
+
+	, _mode_debug_opengl(false)
+	, _mode_verbose(false)
+	, _mode_performance(false)
+	, _mode_vblank(false)
+	, _mode_gl_finish_hack(true)
+	
+	, controller_vert_buffer(0)
+	, controller_vao(0)
 {
 
-		m_bDebugOpenGL = true;
+		_mode_debug_opengl = true;
 };
 
 
@@ -316,11 +267,11 @@ bool VRRenderer::initialize(SDL_Window* window)
 
 	// Loading the SteamVR Runtime
 	vr::EVRInitError eError = vr::VRInitError_None;
-	m_pHMD = vr::VR_Init(&eError, vr::VRApplication_Scene);
+	hmd = vr::VR_Init(&eError, vr::VRApplication_Scene);
 
 	if (eError != vr::VRInitError_None)
 	{
-		m_pHMD = NULL;
+		hmd = NULL;
 		char buf[1024];
 		sprintf_s(buf, sizeof(buf), "Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "VR_Init Failed", buf, NULL);
@@ -328,10 +279,10 @@ bool VRRenderer::initialize(SDL_Window* window)
 	}
 
 
-	m_pRenderModels = (vr::IVRRenderModels *)vr::VR_GetGenericInterface(vr::IVRRenderModels_Version, &eError);
-	if (!m_pRenderModels)
+	render_model_interface = (vr::IVRRenderModels *)vr::VR_GetGenericInterface(vr::IVRRenderModels_Version, &eError);
+	if (!render_model_interface)
 	{
-		m_pHMD = NULL;
+		hmd = NULL;
 		vr::VR_Shutdown();
 
 		char buf[1024];
@@ -351,18 +302,18 @@ bool VRRenderer::initialize(SDL_Window* window)
 
 	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
 	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
-	if (m_bDebugOpenGL)
+	if (_mode_debug_opengl)
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 
-	m_pCompanionWindow = window;
-	if (m_pCompanionWindow == NULL)
+	companion_window = window;
+	if (companion_window == NULL)
 	{
 		printf("%s - Window could not be created! SDL Error: %s\n", __FUNCTION__, SDL_GetError());
 		return false;
 	}
 
-	m_pContext = SDL_GL_CreateContext(m_pCompanionWindow);
-	if (m_pContext == NULL)
+	context = SDL_GL_CreateContext(companion_window);
+	if (context == NULL)
 	{
 		printf("%s - OpenGL context could not be created! SDL Error: %s\n", __FUNCTION__, SDL_GetError());
 		return false;
@@ -377,35 +328,24 @@ bool VRRenderer::initialize(SDL_Window* window)
 	}
 	glGetError(); // to clear the error caused deep in GLEW
 
-	if (SDL_GL_SetSwapInterval(m_bVblank ? 1 : 0) < 0)
+	if (SDL_GL_SetSwapInterval(_mode_vblank ? 1 : 0) < 0)
 	{
 		printf("%s - Warning: Unable to set VSync! SDL Error: %s\n", __FUNCTION__, SDL_GetError());
 		return false;
 	}
 
 
-	m_strDriver = "No Driver";
-	m_strDisplay = "No Display";
+	driver_name = "No Driver";
+	display_name = "No Display";
 
-	m_strDriver = GetTrackedDeviceString(m_pHMD, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String);
-	m_strDisplay = GetTrackedDeviceString(m_pHMD, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SerialNumber_String);
+	driver_name = GetTrackedDeviceString(hmd, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String);
+	display_name = GetTrackedDeviceString(hmd, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SerialNumber_String);
 
-	std::string strWindowTitle = "hellovr - " + m_strDriver + " " + m_strDisplay;
-	SDL_SetWindowTitle(m_pCompanionWindow, strWindowTitle.c_str());
+	std::string strWindowTitle = "hellovr - " + driver_name + " " + display_name;
+	SDL_SetWindowTitle(companion_window, strWindowTitle.c_str());
 
-	// cube array
-	m_iSceneVolumeWidth = m_iSceneVolumeInit;
-	m_iSceneVolumeHeight = m_iSceneVolumeInit;
-	m_iSceneVolumeDepth = m_iSceneVolumeInit;
-
-	m_fScale = 0.3f;
-	m_fScaleSpacing = 4.0f;
-
-	m_fNearClip = 0.1f;
-	m_fFarClip = 30.0f;
-
-	m_iTexture = 0;
-	m_uiVertcount = 0;
+	near_clip = 0.1f;
+	far_clip = 30.0f;
 
 	// 		m_MillisecondsTimer.start(1, this);
 	// 		m_SecondsTimer.start(1000, this);
@@ -435,15 +375,12 @@ bool VRRenderer::initialize(SDL_Window* window)
 bool VRRenderer::initialize_gl()
 {
 	
+	create_all_shaders();
 
-	if (!CreateAllShaders())
-		return false;
-
-	//SetupTexturemaps();
-	SetupCameras();
-	SetupStereoRenderTargets();
-	SetupCompanionWindow();
-	SetupRenderModels();
+	setup_cameras();
+	setup_stereo_render_targets();
+	setup_companion_window();
+	setup_render_models();
 
 	return true;
 }
@@ -470,122 +407,81 @@ bool VRRenderer::initialize_compositor()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void VRRenderer::Shutdown()
+void VRRenderer::shutdown()
 {
-	if (m_pHMD)
+	if (hmd)
 	{
 		vr::VR_Shutdown();
-		m_pHMD = NULL;
+		hmd = NULL;
 	}
 
-	for (std::vector< VRRenderModel * >::iterator i = m_vecRenderModels.begin(); i != m_vecRenderModels.end(); i++)
+	for (std::vector<VRRenderModel*>::iterator i = render_models.begin(); i != render_models.end(); i++)
 	{
 		delete (*i);
 	}
-	m_vecRenderModels.clear();
+	render_models.clear();
 
-	if (m_pContext)
+	if (context)
 	{
-		if (m_bDebugOpenGL)
+		if (_mode_debug_opengl)
 		{
 			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_FALSE);
 			glDebugMessageCallback(nullptr, nullptr);
 		}
-		glDeleteBuffers(1, &m_glSceneVertBuffer);
 
-		if (m_unSceneProgramID)
-		{
-			glDeleteProgram(m_unSceneProgramID);
-		}
-		if (m_unControllerTransformProgramID)
-		{
-			glDeleteProgram(m_unControllerTransformProgramID);
-		}
-		if (m_unRenderModelProgramID)
-		{
-			glDeleteProgram(m_unRenderModelProgramID);
-		}
-		if (m_unCompanionWindowProgramID)
-		{
-			glDeleteProgram(m_unCompanionWindowProgramID);
-		}
+		glDeleteRenderbuffers(1, &left_eye_description.depth_buffer_id);
+		glDeleteTextures(1, &left_eye_description.render_texture_id);
+		glDeleteFramebuffers(1, &left_eye_description.render_framebuffer_id);
+		glDeleteTextures(1, &left_eye_description.resolve_texture_id);
+		glDeleteFramebuffers(1, &left_eye_description.resolve_framebuffer_id);
 
-		glDeleteRenderbuffers(1, &leftEyeDesc.m_nDepthBufferId);
-		glDeleteTextures(1, &leftEyeDesc.m_nRenderTextureId);
-		glDeleteFramebuffers(1, &leftEyeDesc.m_nRenderFramebufferId);
-		glDeleteTextures(1, &leftEyeDesc.m_nResolveTextureId);
-		glDeleteFramebuffers(1, &leftEyeDesc.m_nResolveFramebufferId);
+		glDeleteRenderbuffers(1, &right_eye_description.depth_buffer_id);
+		glDeleteTextures(1, &right_eye_description.render_texture_id);
+		glDeleteFramebuffers(1, &right_eye_description.render_framebuffer_id);
+		glDeleteTextures(1, &right_eye_description.resolve_texture_id);
+		glDeleteFramebuffers(1, &right_eye_description.resolve_framebuffer_id);
 
-		glDeleteRenderbuffers(1, &rightEyeDesc.m_nDepthBufferId);
-		glDeleteTextures(1, &rightEyeDesc.m_nRenderTextureId);
-		glDeleteFramebuffers(1, &rightEyeDesc.m_nRenderFramebufferId);
-		glDeleteTextures(1, &rightEyeDesc.m_nResolveTextureId);
-		glDeleteFramebuffers(1, &rightEyeDesc.m_nResolveFramebufferId);
-
-		if (m_unCompanionWindowVAO != 0)
+		if (companion_window_vao != 0)
 		{
-			glDeleteVertexArrays(1, &m_unCompanionWindowVAO);
+			glDeleteVertexArrays(1, &companion_window_vao);
 		}
-		if (m_unSceneVAO != 0)
+		
+		if (controller_vao != 0)
 		{
-			glDeleteVertexArrays(1, &m_unSceneVAO);
-		}
-		if (m_unControllerVAO != 0)
-		{
-			glDeleteVertexArrays(1, &m_unControllerVAO);
+			glDeleteVertexArrays(1, &controller_vao);
 		}
 	}
 
-		m_pCompanionWindow = NULL;
+		companion_window = NULL;
 	
 }
 
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void VRRenderer::HandleInput()
+void VRRenderer::handle_input()
 {
 		// Process SteamVR events
 	vr::VREvent_t event;
-	while (m_pHMD->PollNextEvent(&event, sizeof(event)))
+	while (hmd->PollNextEvent(&event, sizeof(event)))
 	{
-		ProcessVREvent(event);
+		process_VREvent(event);
 	}
 
 	
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void VRRenderer::RunMainLoop()
-{
-	bool bQuit = false;
-
-	SDL_StartTextInput();
-	SDL_ShowCursor(SDL_DISABLE);
-
-	while (!bQuit)
-	{
-		HandleInput();
-
-		RenderFrame();
-	}
-
-	SDL_StopTextInput();
 }
 
 
 //-----------------------------------------------------------------------------
 // Purpose: Processes a single VR event
 //-----------------------------------------------------------------------------
-void VRRenderer::ProcessVREvent(const vr::VREvent_t & event)
+void VRRenderer::process_VREvent(const vr::VREvent_t & event)
 {
 	switch (event.eventType)
 	{
 	case vr::VREvent_TrackedDeviceActivated:
 	{
-		SetupRenderModelForTrackedDevice(event.trackedDeviceIndex);
+		setup_render_model_for_tracked_device(event.trackedDeviceIndex);
 		dprintf("Device %u attached. Setting up render model.\n", event.trackedDeviceIndex);
 	}
 	break;
@@ -606,22 +502,22 @@ void VRRenderer::ProcessVREvent(const vr::VREvent_t & event)
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void VRRenderer::RenderFrame()
+void VRRenderer::render()
 {
 	// for now as fast as possible
-	if (m_pHMD)
+	if (hmd)
 	{
-		RenderControllerAxes();
-		RenderStereoTargets();
-		RenderCompanionWindow();
+		render_controller_axis();
+		render_stereo_targets();
+		render_companion_window();
 
-		vr::Texture_t leftEyeTexture = { (void*)(uintptr_t)leftEyeDesc.m_nResolveTextureId, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
+		vr::Texture_t leftEyeTexture = { (void*)(uintptr_t)left_eye_description.resolve_texture_id, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
 		vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture);
-		vr::Texture_t rightEyeTexture = { (void*)(uintptr_t)rightEyeDesc.m_nResolveTextureId, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
+		vr::Texture_t rightEyeTexture = { (void*)(uintptr_t)right_eye_description.resolve_texture_id, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
 		vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture);
 	}
 
-	if (m_bVblank && m_bGlFinishHack)
+	if (_mode_vblank && _mode_gl_finish_hack)
 	{
 		//$ HACKHACK. From gpuview profiling, it looks like there is a bug where two renders and a present
 		// happen right before and after the vsync causing all kinds of jittering issues. This glFinish()
@@ -632,7 +528,7 @@ void VRRenderer::RenderFrame()
 
 	// SwapWindow
 	{
-		SDL_GL_SwapWindow(m_pCompanionWindow);
+		SDL_GL_SwapWindow(companion_window);
 	}
 
 	// Clear
@@ -644,323 +540,74 @@ void VRRenderer::RenderFrame()
 	}
 
 	// Flush and wait for swap.
-	if (m_bVblank)
+	if (_mode_vblank)
 	{
 		glFlush();
 		glFinish();
 	}
 }
 
-
-//-----------------------------------------------------------------------------
-// Purpose: Compiles a GL shader program and returns the handle. Returns 0 if
-//			the shader couldn't be compiled for some reason.
-//-----------------------------------------------------------------------------
-GLuint VRRenderer::CompileGLShader(const char *pchShaderName, const char *pchVertexShader, const char *pchFragmentShader)
-{
-	GLuint unProgramID = glCreateProgram();
-
-	GLuint nSceneVertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(nSceneVertexShader, 1, &pchVertexShader, NULL);
-	glCompileShader(nSceneVertexShader);
-
-	GLint vShaderCompiled = GL_FALSE;
-	glGetShaderiv(nSceneVertexShader, GL_COMPILE_STATUS, &vShaderCompiled);
-	if (vShaderCompiled != GL_TRUE)
-	{
-		dprintf("%s - Unable to compile vertex shader %d!\n", pchShaderName, nSceneVertexShader);
-		glDeleteProgram(unProgramID);
-		glDeleteShader(nSceneVertexShader);
-		return 0;
-	}
-	glAttachShader(unProgramID, nSceneVertexShader);
-	glDeleteShader(nSceneVertexShader); // the program hangs onto this once it's attached
-
-	GLuint  nSceneFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(nSceneFragmentShader, 1, &pchFragmentShader, NULL);
-	glCompileShader(nSceneFragmentShader);
-
-	GLint fShaderCompiled = GL_FALSE;
-	glGetShaderiv(nSceneFragmentShader, GL_COMPILE_STATUS, &fShaderCompiled);
-	if (fShaderCompiled != GL_TRUE)
-	{
-		dprintf("%s - Unable to compile fragment shader %d!\n", pchShaderName, nSceneFragmentShader);
-		glDeleteProgram(unProgramID);
-		glDeleteShader(nSceneFragmentShader);
-		return 0;
-	}
-
-	glAttachShader(unProgramID, nSceneFragmentShader);
-	glDeleteShader(nSceneFragmentShader); // the program hangs onto this once it's attached
-
-	glLinkProgram(unProgramID);
-
-	GLint programSuccess = GL_TRUE;
-	glGetProgramiv(unProgramID, GL_LINK_STATUS, &programSuccess);
-	if (programSuccess != GL_TRUE)
-	{
-		dprintf("%s - Error linking program %d!\n", pchShaderName, unProgramID);
-		glDeleteProgram(unProgramID);
-		return 0;
-	}
-
-	glUseProgram(unProgramID);
-	glUseProgram(0);
-
-	return unProgramID;
-}
-
-
 //-----------------------------------------------------------------------------
 // Purpose: Creates all the shaders used by HelloVR SDL
 //-----------------------------------------------------------------------------
-bool VRRenderer::CreateAllShaders()
+void VRRenderer::create_all_shaders()
 {
-	m_unSceneProgramID = CompileGLShader(
-		"Scene",
+	{ //Scene Shader
+		scene_shader = AssetManager::get_shader("shaders/standard");
 
-		// Vertex Shader
-		"#version 410\n"
-		"uniform mat4 matrix;\n"
-		"layout(location = 0) in vec4 position;\n"
-		"layout(location = 1) in vec2 v2UVcoordsIn;\n"
-		"layout(location = 2) in vec3 v3NormalIn;\n"
-		"out vec2 v2UVcoords;\n"
-		"void main()\n"
-		"{\n"
-		"	v2UVcoords = v2UVcoordsIn;\n"
-		"	gl_Position = matrix * position;\n"
-		"}\n",
+		scene_shader->init_uniform("model", Shader::Uniform_Type::Mat4);
+		scene_shader->init_uniform("view", Shader::Uniform_Type::Mat4);
+		scene_shader->init_uniform("projection", Shader::Uniform_Type::Mat4);
+		scene_shader->init_uniform("normalMat", Shader::Uniform_Type::Mat3);
 
-		// Fragment Shader
-		"#version 410 core\n"
-		"uniform sampler2D mytexture;\n"
-		"in vec2 v2UVcoords;\n"
-		"out vec4 outputColor;\n"
-		"void main()\n"
-		"{\n"
-		"   outputColor = vec4(v2UVcoords.x,v2UVcoords.y,1,1);\n"
-		//texture(mytexture, v2UVcoords);\n"
-		"}\n"
-	);
-	m_nSceneMatrixLocation = glGetUniformLocation(m_unSceneProgramID, "matrix");
-	if (m_nSceneMatrixLocation == -1)
-	{
-		dprintf("Unable to find matrix uniform in scene shader\n");
-		return false;
-	}
-
-	m_unControllerTransformProgramID = CompileGLShader(
-		"Controller",
-
-		// vertex shader
-		"#version 410\n"
-		"uniform mat4 matrix;\n"
-		"layout(location = 0) in vec4 position;\n"
-		"layout(location = 1) in vec3 v3ColorIn;\n"
-		"out vec4 v4Color;\n"
-		"void main()\n"
-		"{\n"
-		"	v4Color.xyz = v3ColorIn; v4Color.a = 1.0;\n"
-		"	gl_Position = matrix * position;\n"
-		"}\n",
-
-		// fragment shader
-		"#version 410\n"
-		"in vec4 v4Color;\n"
-		"out vec4 outputColor;\n"
-		"void main()\n"
-		"{\n"
-		"   outputColor = v4Color;\n"
-		"}\n"
-	);
-	m_nControllerMatrixLocation = glGetUniformLocation(m_unControllerTransformProgramID, "matrix");
-	if (m_nControllerMatrixLocation == -1)
-	{
-		dprintf("Unable to find matrix uniform in controller shader\n");
-		return false;
-	}
-
-	m_unRenderModelProgramID = CompileGLShader(
-		"render model",
-
-		// vertex shader
-		"#version 410\n"
-		"uniform mat4 matrix;\n"
-		"layout(location = 0) in vec4 position;\n"
-		"layout(location = 1) in vec3 v3NormalIn;\n"
-		"layout(location = 2) in vec2 v2TexCoordsIn;\n"
-		"out vec2 v2TexCoord;\n"
-		"void main()\n"
-		"{\n"
-		"	v2TexCoord = v2TexCoordsIn;\n"
-		"	gl_Position = matrix * vec4(position.xyz, 1);\n"
-		"}\n",
-
-		//fragment shader
-		"#version 410 core\n"
-		"uniform sampler2D diffuse;\n"
-		"in vec2 v2TexCoord;\n"
-		"out vec4 outputColor;\n"
-		"void main()\n"
-		"{\n"
-		"   outputColor = texture( diffuse, v2TexCoord);\n"
-		"}\n"
-
-	);
-	m_nRenderModelMatrixLocation = glGetUniformLocation(m_unRenderModelProgramID, "matrix");
-	if (m_nRenderModelMatrixLocation == -1)
-	{
-		dprintf("Unable to find matrix uniform in render model shader\n");
-		return false;
-	}
-
-	m_unCompanionWindowProgramID = CompileGLShader(
-		"CompanionWindow",
-
-		// vertex shader
-		"#version 410 core\n"
-		"layout(location = 0) in vec4 position;\n"
-		"layout(location = 1) in vec2 v2UVIn;\n"
-		"noperspective out vec2 v2UV;\n"
-		"void main()\n"
-		"{\n"
-		"	v2UV = v2UVIn;\n"
-		"	gl_Position = position;\n"
-		"}\n",
-
-		// fragment shader
-		"#version 410 core\n"
-		"uniform sampler2D mytexture;\n"
-		"noperspective in vec2 v2UV;\n"
-		"out vec4 outputColor;\n"
-		"void main()\n"
-		"{\n"
-		"		outputColor = texture(mytexture, vec2(v2UV.x, 1.0f - v2UV.y));\n"
-		"}\n"
-	);
-
-	//Shader setup
-	{
-		shader = AssetManager::get_shader("shaders/standard");
-
-		shader->init_uniform("model", Shader::Uniform_Type::Mat4);
-		shader->init_uniform("view", Shader::Uniform_Type::Mat4);
-		shader->init_uniform("projection", Shader::Uniform_Type::Mat4);
-		shader->init_uniform("normalMat", Shader::Uniform_Type::Mat3);
-
-		shader->init_uniform("ambientLight", Shader::Uniform_Type::Vec4);
-		shader->init_uniform("color", Shader::Uniform_Type::Vec4);
-		shader->init_uniform("specularity", Shader::Uniform_Type::Float);
+		scene_shader->init_uniform("ambientLight", Shader::Uniform_Type::Vec4);
+		scene_shader->init_uniform("color", Shader::Uniform_Type::Vec4);
+		scene_shader->init_uniform("specularity", Shader::Uniform_Type::Float);
 
 
 		for (int i = 0; i < 4; i++) {
-			shader->init_uniform("lightPosType[" + to_string(i) + "]", Shader::Uniform_Type::Vec4);
-			shader->init_uniform("lightColorRange[" + to_string(i) + "]", Shader::Uniform_Type::Vec4);
+			scene_shader->init_uniform("lightPosType[" + to_string(i) + "]", Shader::Uniform_Type::Vec4);
+			scene_shader->init_uniform("lightColorRange[" + to_string(i) + "]", Shader::Uniform_Type::Vec4);
 		}
-
 	}
+	{ //Companion Shader
+		window_shader = AssetManager::get_shader("shaders/companion_window");
 
+		//window_shader->init_uniform("mytexture", Shader::Uniform_Type::Texture);
+	}
+	{ //Render Model Shader
+		render_model_shader = AssetManager::get_shader("shaders/render_model");
 
-	return m_unSceneProgramID != 0
-		&& m_unControllerTransformProgramID != 0
-		&& m_unRenderModelProgramID != 0
-		&& m_unCompanionWindowProgramID != 0;
-}
+		render_model_shader->init_uniform("matrix", Shader::Uniform_Type::Mat4);
+		render_model_shader->init_uniform("diffuse", Shader::Uniform_Type::Texture);
+	}
+	{ //Transform Shader
+		transform_shader = AssetManager::get_shader("shaders/transform");
 
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void VRRenderer::AddCubeVertex(float fl0, float fl1, float fl2, float fl3, float fl4, std::vector<float> &vertdata)
-{
-	vertdata.push_back(fl0);
-	vertdata.push_back(fl1);
-	vertdata.push_back(fl2);
-	vertdata.push_back(fl3);
-	vertdata.push_back(fl4);
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void VRRenderer::AddCubeToScene(mat4 mat, std::vector<float> &vertdata)
-{
-	// mat4 mat( outermat.data() );
-
-	vec4 A = mat * vec4(0, 0, 0, 1);
-	vec4 B = mat * vec4(1, 0, 0, 1);
-	vec4 C = mat * vec4(1, 1, 0, 1);
-	vec4 D = mat * vec4(0, 1, 0, 1);
-	vec4 E = mat * vec4(0, 0, 1, 1);
-	vec4 F = mat * vec4(1, 0, 1, 1);
-	vec4 G = mat * vec4(1, 1, 1, 1);
-	vec4 H = mat * vec4(0, 1, 1, 1);
-
-	// triangles instead of quads
-	AddCubeVertex(E.x, E.y, E.z, 0, 1, vertdata); //Front
-	AddCubeVertex(F.x, F.y, F.z, 1, 1, vertdata);
-	AddCubeVertex(G.x, G.y, G.z, 1, 0, vertdata);
-	AddCubeVertex(G.x, G.y, G.z, 1, 0, vertdata);
-	AddCubeVertex(H.x, H.y, H.z, 0, 0, vertdata);
-	AddCubeVertex(E.x, E.y, E.z, 0, 1, vertdata);
-
-	AddCubeVertex(B.x, B.y, B.z, 0, 1, vertdata); //Back
-	AddCubeVertex(A.x, A.y, A.z, 1, 1, vertdata);
-	AddCubeVertex(D.x, D.y, D.z, 1, 0, vertdata);
-	AddCubeVertex(D.x, D.y, D.z, 1, 0, vertdata);
-	AddCubeVertex(C.x, C.y, C.z, 0, 0, vertdata);
-	AddCubeVertex(B.x, B.y, B.z, 0, 1, vertdata);
-
-	AddCubeVertex(H.x, H.y, H.z, 0, 1, vertdata); //Top
-	AddCubeVertex(G.x, G.y, G.z, 1, 1, vertdata);
-	AddCubeVertex(C.x, C.y, C.z, 1, 0, vertdata);
-	AddCubeVertex(C.x, C.y, C.z, 1, 0, vertdata);
-	AddCubeVertex(D.x, D.y, D.z, 0, 0, vertdata);
-	AddCubeVertex(H.x, H.y, H.z, 0, 1, vertdata);
-
-	AddCubeVertex(A.x, A.y, A.z, 0, 1, vertdata); //Bottom
-	AddCubeVertex(B.x, B.y, B.z, 1, 1, vertdata);
-	AddCubeVertex(F.x, F.y, F.z, 1, 0, vertdata);
-	AddCubeVertex(F.x, F.y, F.z, 1, 0, vertdata);
-	AddCubeVertex(E.x, E.y, E.z, 0, 0, vertdata);
-	AddCubeVertex(A.x, A.y, A.z, 0, 1, vertdata);
-
-	AddCubeVertex(A.x, A.y, A.z, 0, 1, vertdata); //Left
-	AddCubeVertex(E.x, E.y, E.z, 1, 1, vertdata);
-	AddCubeVertex(H.x, H.y, H.z, 1, 0, vertdata);
-	AddCubeVertex(H.x, H.y, H.z, 1, 0, vertdata);
-	AddCubeVertex(D.x, D.y, D.z, 0, 0, vertdata);
-	AddCubeVertex(A.x, A.y, A.z, 0, 1, vertdata);
-
-	AddCubeVertex(F.x, F.y, F.z, 0, 1, vertdata); //Right
-	AddCubeVertex(B.x, B.y, B.z, 1, 1, vertdata);
-	AddCubeVertex(C.x, C.y, C.z, 1, 0, vertdata);
-	AddCubeVertex(C.x, C.y, C.z, 1, 0, vertdata);
-	AddCubeVertex(G.x, G.y, G.z, 0, 0, vertdata);
-	AddCubeVertex(F.x, F.y, F.z, 0, 1, vertdata);
+		transform_shader->init_uniform("matrix", Shader::Uniform_Type::Mat4);
+	}
 }
 
 
 //-----------------------------------------------------------------------------
 // Purpose: Draw all of the controllers as X/Y/Z lines
 //-----------------------------------------------------------------------------
-void VRRenderer::RenderControllerAxes()
+void VRRenderer::render_controller_axis()
 {
 	// don't draw controllers if somebody else has input focus
-	if (m_pHMD->IsInputFocusCapturedByAnotherProcess())
+	if (hmd->IsInputFocusCapturedByAnotherProcess())
 		return;
 
 	std::vector<float> vertdataarray;
 
-	m_uiControllerVertcount = 0;
+	controller_vert_count = 0;
 
 	for (vr::TrackedDeviceIndex_t unTrackedDevice = vr::k_unTrackedDeviceIndex_Hmd + 1; unTrackedDevice < vr::k_unMaxTrackedDeviceCount; ++unTrackedDevice)
 	{
-		if (!m_pHMD->IsTrackedDeviceConnected(unTrackedDevice))
+		if (!hmd->IsTrackedDeviceConnected(unTrackedDevice))
 			continue;
 
-		if (m_pHMD->GetTrackedDeviceClass(unTrackedDevice) != vr::TrackedDeviceClass_Controller)
+		if (hmd->GetTrackedDeviceClass(unTrackedDevice) != vr::TrackedDeviceClass_Controller)
 			continue;
 
 		if (!Input::device_pose[unTrackedDevice].bPoseIsValid)
@@ -993,7 +640,7 @@ void VRRenderer::RenderControllerAxes()
 			vertdataarray.push_back(color.y);
 			vertdataarray.push_back(color.z);
 
-			m_uiControllerVertcount += 2;
+			controller_vert_count += 2;
 		}
 
 		vec4 start = mat * vec4(0, 0, -0.02f, 1);
@@ -1005,17 +652,17 @@ void VRRenderer::RenderControllerAxes()
 
 		vertdataarray.push_back(end.x); vertdataarray.push_back(end.y); vertdataarray.push_back(end.z);
 		vertdataarray.push_back(color.x); vertdataarray.push_back(color.y); vertdataarray.push_back(color.z);
-		m_uiControllerVertcount += 2;
+		controller_vert_count += 2;
 	}
 
 	// Setup the VAO the first time through.
-	if (m_unControllerVAO == 0)
+	if (controller_vao == 0)
 	{
-		glGenVertexArrays(1, &m_unControllerVAO);
-		glBindVertexArray(m_unControllerVAO);
+		glGenVertexArrays(1, &controller_vao);
+		glBindVertexArray(controller_vao);
 
-		glGenBuffers(1, &m_glControllerVertBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, m_glControllerVertBuffer);
+		glGenBuffers(1, &controller_vert_buffer);
+		glBindBuffer(GL_ARRAY_BUFFER, controller_vert_buffer);
 
 		GLuint stride = 2 * 3 * sizeof(float);
 		uintptr_t offset = 0;
@@ -1030,7 +677,7 @@ void VRRenderer::RenderControllerAxes()
 		glBindVertexArray(0);
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, m_glControllerVertBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, controller_vert_buffer);
 
 	// set vertex data if we have some
 	if (vertdataarray.size() > 0)
@@ -1044,12 +691,12 @@ void VRRenderer::RenderControllerAxes()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void VRRenderer::SetupCameras()
+void VRRenderer::setup_cameras()
 {
-	m_mat4ProjectionLeft = GetHMDMatrixProjectionEye(vr::Eye_Left);
-	m_mat4ProjectionRight = GetHMDMatrixProjectionEye(vr::Eye_Right);
-	m_mat4eyePosLeft = GetHMDMatrixPoseEye(vr::Eye_Left);
-	m_mat4eyePosRight = GetHMDMatrixPoseEye(vr::Eye_Right);
+	projection_left_matrix = get_hmd_projection_eye(vr::Eye_Left);
+	projection_right_matrix = get_hmd_projection_eye(vr::Eye_Right);
+	eye_pos_left_matrix = get_hmd_pose_eye(vr::Eye_Left);
+	eye_pos_right_matrix = get_hmd_pose_eye(vr::Eye_Right);
 }
 
 
@@ -1057,30 +704,30 @@ void VRRenderer::SetupCameras()
 // Purpose: Creates a frame buffer. Returns true if the buffer was set up.
 //          Returns false if the setup failed.
 //-----------------------------------------------------------------------------
-bool VRRenderer::CreateFrameBuffer(int nWidth, int nHeight, FramebufferDesc &framebufferDesc)
+bool VRRenderer::CreateFrameBuffer(int nWidth, int nHeight, FramebufferDescription &framebufferDesc)
 {
-	glGenFramebuffers(1, &framebufferDesc.m_nRenderFramebufferId);
-	glBindFramebuffer(GL_FRAMEBUFFER, framebufferDesc.m_nRenderFramebufferId);
+	glGenFramebuffers(1, &framebufferDesc.render_framebuffer_id);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebufferDesc.render_framebuffer_id);
 
-	glGenRenderbuffers(1, &framebufferDesc.m_nDepthBufferId);
-	glBindRenderbuffer(GL_RENDERBUFFER, framebufferDesc.m_nDepthBufferId);
+	glGenRenderbuffers(1, &framebufferDesc.depth_buffer_id);
+	glBindRenderbuffer(GL_RENDERBUFFER, framebufferDesc.depth_buffer_id);
 	glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT, nWidth, nHeight);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, framebufferDesc.m_nDepthBufferId);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, framebufferDesc.depth_buffer_id);
 
-	glGenTextures(1, &framebufferDesc.m_nRenderTextureId);
-	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, framebufferDesc.m_nRenderTextureId);
+	glGenTextures(1, &framebufferDesc.render_texture_id);
+	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, framebufferDesc.render_texture_id);
 	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA8, nWidth, nHeight, true);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, framebufferDesc.m_nRenderTextureId, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, framebufferDesc.render_texture_id, 0);
 
-	glGenFramebuffers(1, &framebufferDesc.m_nResolveFramebufferId);
-	glBindFramebuffer(GL_FRAMEBUFFER, framebufferDesc.m_nResolveFramebufferId);
+	glGenFramebuffers(1, &framebufferDesc.resolve_framebuffer_id);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebufferDesc.resolve_framebuffer_id);
 
-	glGenTextures(1, &framebufferDesc.m_nResolveTextureId);
-	glBindTexture(GL_TEXTURE_2D, framebufferDesc.m_nResolveTextureId);
+	glGenTextures(1, &framebufferDesc.resolve_texture_id);
+	glBindTexture(GL_TEXTURE_2D, framebufferDesc.resolve_texture_id);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, nWidth, nHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferDesc.m_nResolveTextureId, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferDesc.resolve_texture_id, 0);
 
 	// check FBO status
 	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -1098,15 +745,15 @@ bool VRRenderer::CreateFrameBuffer(int nWidth, int nHeight, FramebufferDesc &fra
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-bool VRRenderer::SetupStereoRenderTargets()
+bool VRRenderer::setup_stereo_render_targets()
 {
-	if (!m_pHMD)
+	if (!hmd)
 		return false;
 
-	m_pHMD->GetRecommendedRenderTargetSize(&m_nRenderWidth, &m_nRenderHeight);
+	hmd->GetRecommendedRenderTargetSize(&render_width, &render_height);
 
-	CreateFrameBuffer(m_nRenderWidth, m_nRenderHeight, leftEyeDesc);
-	CreateFrameBuffer(m_nRenderWidth, m_nRenderHeight, rightEyeDesc);
+	CreateFrameBuffer(render_width, render_height, left_eye_description);
+	CreateFrameBuffer(render_width, render_height, right_eye_description);
 
 	return true;
 }
@@ -1115,9 +762,9 @@ bool VRRenderer::SetupStereoRenderTargets()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void VRRenderer::SetupCompanionWindow()
+void VRRenderer::setup_companion_window()
 {
-	if (!m_pHMD)
+	if (!hmd)
 		return;
 
 	std::vector<VertexDataWindow> vVerts;
@@ -1135,24 +782,24 @@ void VRRenderer::SetupCompanionWindow()
 	vVerts.push_back(VertexDataWindow(vec2(1, 1), vec2(1, 0)));
 
 	GLushort vIndices[] = { 0, 1, 3,   0, 3, 2,   4, 5, 7,   4, 7, 6 };
-	m_uiCompanionWindowIndexSize = _countof(vIndices);
+	companion_window_index_size = _countof(vIndices);
 
-	glGenVertexArrays(1, &m_unCompanionWindowVAO);
-	glBindVertexArray(m_unCompanionWindowVAO);
+	glGenVertexArrays(1, &companion_window_vao);
+	glBindVertexArray(companion_window_vao);
 
-	glGenBuffers(1, &m_glCompanionWindowIDVertBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, m_glCompanionWindowIDVertBuffer);
+	glGenBuffers(1, &companion_window_id_vert_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, companion_window_id_vert_buffer);
 	glBufferData(GL_ARRAY_BUFFER, vVerts.size() * sizeof(VertexDataWindow), &vVerts[0], GL_STATIC_DRAW);
 
-	glGenBuffers(1, &m_glCompanionWindowIDIndexBuffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_glCompanionWindowIDIndexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_uiCompanionWindowIndexSize * sizeof(GLushort), &vIndices[0], GL_STATIC_DRAW);
+	glGenBuffers(1, &companion_window_id_index_buffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, companion_window_id_index_buffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, companion_window_index_size * sizeof(GLushort), &vIndices[0], GL_STATIC_DRAW);
 
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(VertexDataWindow), (void *)offsetof(VertexDataWindow, position));
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(VertexDataWindow), (void*)offsetof(VertexDataWindow, position));
 
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexDataWindow), (void *)offsetof(VertexDataWindow, texCoord));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexDataWindow), (void*)offsetof(VertexDataWindow, texture_coord));
 
 	glBindVertexArray(0);
 
@@ -1167,23 +814,23 @@ void VRRenderer::SetupCompanionWindow()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void VRRenderer::RenderStereoTargets()
+void VRRenderer::render_stereo_targets()
 {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_MULTISAMPLE);
 
 	// Left Eye
-	glBindFramebuffer(GL_FRAMEBUFFER, leftEyeDesc.m_nRenderFramebufferId);
-	glViewport(0, 0, m_nRenderWidth, m_nRenderHeight);
-	RenderScene(vr::Eye_Left);
+	glBindFramebuffer(GL_FRAMEBUFFER, left_eye_description.render_framebuffer_id);
+	glViewport(0, 0, render_width, render_height);
+	render_scene(vr::Eye_Left);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	glDisable(GL_MULTISAMPLE);
 
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, leftEyeDesc.m_nRenderFramebufferId);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, leftEyeDesc.m_nResolveFramebufferId);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, left_eye_description.render_framebuffer_id);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, left_eye_description.resolve_framebuffer_id);
 
-	glBlitFramebuffer(0, 0, m_nRenderWidth, m_nRenderHeight, 0, 0, m_nRenderWidth, m_nRenderHeight,
+	glBlitFramebuffer(0, 0, render_width, render_height, 0, 0, render_width, render_height,
 		GL_COLOR_BUFFER_BIT,
 		GL_LINEAR);
 
@@ -1193,17 +840,17 @@ void VRRenderer::RenderStereoTargets()
 	glEnable(GL_MULTISAMPLE);
 
 	// Right Eye
-	glBindFramebuffer(GL_FRAMEBUFFER, rightEyeDesc.m_nRenderFramebufferId);
-	glViewport(0, 0, m_nRenderWidth, m_nRenderHeight);
-	RenderScene(vr::Eye_Right);
+	glBindFramebuffer(GL_FRAMEBUFFER, right_eye_description.render_framebuffer_id);
+	glViewport(0, 0, render_width, render_height);
+	render_scene(vr::Eye_Right);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	glDisable(GL_MULTISAMPLE);
 
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, rightEyeDesc.m_nRenderFramebufferId);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, rightEyeDesc.m_nResolveFramebufferId);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, right_eye_description.render_framebuffer_id);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, right_eye_description.resolve_framebuffer_id);
 
-	glBlitFramebuffer(0, 0, m_nRenderWidth, m_nRenderHeight, 0, 0, m_nRenderWidth, m_nRenderHeight,
+	glBlitFramebuffer(0, 0, render_width, render_height, 0, 0, render_width, render_height,
 		GL_COLOR_BUFFER_BIT,
 		GL_LINEAR);
 
@@ -1220,15 +867,15 @@ void VRRenderer::_render_pool(DynamicPool<Entity*> pool) {
 				Entity* e = *p;
 				if (e->is_visible && e->mesh != nullptr) {
 					mat4 model = current_model_transform * e->transform->get_model_transform();
-					shader->set_uniform("model", model);
-					shader->set_uniform("view", current_view_transform);
-					shader->set_uniform("projection", current_projection_transform);
-					shader->set_uniform("normalMat", transpose(inverse((glm::mat3)model)));
+					scene_shader->set_uniform("model", model);
+					scene_shader->set_uniform("view", current_view_transform);
+					scene_shader->set_uniform("projection", current_projection_transform);
+					scene_shader->set_uniform("normalMat", transpose(inverse((glm::mat3)model)));
 
 
-					shader->set_uniform("ambientLight", vec4(0.1f));
+					scene_shader->set_uniform("ambientLight", vec4(0.1f));
 
-					shader->set_uniform("color", e->color);
+					scene_shader->set_uniform("color", e->color);
 
 					//lights
 					for (int i = 0; i < 4; i++) {
@@ -1238,8 +885,8 @@ void VRRenderer::_render_pool(DynamicPool<Entity*> pool) {
 							vec4 light_pos_type = vec4(l->position, (int)l->type);
 							vec4 light_color_range = vec4(l->color * l->intensity, l->range);
 
-							shader->set_uniform("lightPosType[" + to_string(i) + "]", light_pos_type);
-							shader->set_uniform("lightColorRange[" + to_string(i) + "]", light_color_range);
+							scene_shader->set_uniform("lightPosType[" + to_string(i) + "]", light_pos_type);
+							scene_shader->set_uniform("lightColorRange[" + to_string(i) + "]", light_color_range);
 
 						}
 					}
@@ -1260,26 +907,26 @@ void VRRenderer::_render_pool(DynamicPool<Entity*> pool) {
 //-----------------------------------------------------------------------------
 // Purpose: Renders a scene with respect to nEye.
 //-----------------------------------------------------------------------------
-void VRRenderer::RenderScene(vr::Hmd_Eye nEye)
+void VRRenderer::render_scene(vr::Hmd_Eye nEye)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 
 
 
-	shader->use();
+	scene_shader->use();
 		
 	current_model_transform = Input::get_hmd_matrix();
 
 	if (nEye == vr::Eye_Left)
 	{
-		current_view_transform = m_mat4eyePosLeft;
-		current_projection_transform = m_mat4ProjectionLeft;
+		current_view_transform = eye_pos_left_matrix;
+		current_projection_transform = projection_left_matrix;
 	}
 	else if (nEye == vr::Eye_Right)
 	{
-		current_view_transform = m_mat4eyePosRight;
-		current_projection_transform = m_mat4ProjectionRight;
+		current_view_transform = eye_pos_right_matrix;
+		current_projection_transform = projection_right_matrix;
 	}
 
 	mat4 mvp = current_projection_transform * current_view_transform * current_model_transform;
@@ -1296,24 +943,25 @@ void VRRenderer::RenderScene(vr::Hmd_Eye nEye)
 
 
 
-	bool bIsInputCapturedByAnotherProcess = m_pHMD->IsInputFocusCapturedByAnotherProcess();
+	bool bIsInputCapturedByAnotherProcess = hmd->IsInputFocusCapturedByAnotherProcess();
 
 	if (!bIsInputCapturedByAnotherProcess)
 	{
 		// draw the controller axis lines
-		glUseProgram(m_unControllerTransformProgramID);
-		glUniformMatrix4fv(m_nControllerMatrixLocation, 1, GL_FALSE, glm::value_ptr(mvp));
-		glBindVertexArray(m_unControllerVAO);
-		glDrawArrays(GL_LINES, 0, m_uiControllerVertcount);
+		transform_shader->use();
+		transform_shader->set_uniform("matrix", mvp);
+
+		glBindVertexArray(controller_vao);
+		glDrawArrays(GL_LINES, 0, controller_vert_count);
 		glBindVertexArray(0);
 	}
 
 	// ----- Render Model rendering -----
-	glUseProgram(m_unRenderModelProgramID);
+	render_model_shader->use();
 
 	for (uint32_t unTrackedDevice = 0; unTrackedDevice < vr::k_unMaxTrackedDeviceCount; unTrackedDevice++)
 	{
-		if (!m_rTrackedDeviceToRenderModel[unTrackedDevice] || !m_rbShowTrackedDevice[unTrackedDevice])
+		if (!tracked_device_to_render_model[unTrackedDevice] || !show_tracked_device[unTrackedDevice])
 			continue;
 
 		const vr::TrackedDevicePose_t & pose = Input::device_pose[unTrackedDevice];
@@ -1325,16 +973,15 @@ void VRRenderer::RenderScene(vr::Hmd_Eye nEye)
 
 		const mat4 & matDeviceToTracking = Input::device_matrix[unTrackedDevice];
 		mat4 matMVP = mvp * matDeviceToTracking;
-		glUniformMatrix4fv(m_nRenderModelMatrixLocation, 1, GL_FALSE, glm::value_ptr(matMVP));
+		render_model_shader->set_uniform("matrix", matMVP);
 
-		m_rTrackedDeviceToRenderModel[unTrackedDevice]->Draw();
+		tracked_device_to_render_model[unTrackedDevice]->draw();
 	}
 
-	glUseProgram(0);
 }
 
 
-void VRRenderer::RenderEntity(Entity* entity) {
+void VRRenderer::render_entity(Entity* entity) {
 
 	if (entity->transform == nullptr) {
 		cout << entity->name << "->transform = nullptr\n";
@@ -1343,16 +990,16 @@ void VRRenderer::RenderEntity(Entity* entity) {
 	}
 
 	//vert
-	shader->set_uniform("model", current_model_transform * entity->transform->get_model_transform());
-	shader->set_uniform("normalMat", entity->transform->get_normal_transform());
+	scene_shader->set_uniform("model", current_model_transform * entity->transform->get_model_transform());
+	scene_shader->set_uniform("normalMat", entity->transform->get_normal_transform());
 
-	shader->set_uniform("view", current_view_transform);
-	shader->set_uniform("projection", current_projection_transform);
+	scene_shader->set_uniform("view", current_view_transform);
+	scene_shader->set_uniform("projection", current_projection_transform);
 
-	shader->set_uniform("ambientLight", vec4(0.2f,0.2f,0.2f,1));
-	shader->set_uniform("color", entity->color);
+	scene_shader->set_uniform("ambientLight", vec4(0.2f,0.2f,0.2f,1));
+	scene_shader->set_uniform("color", entity->color);
 
-	shader->set_uniform("specularity", entity->specularity);
+	scene_shader->set_uniform("specularity", entity->specularity);
 
 	//lights
 	for (int i = 0; i < 4; i++) {
@@ -1362,8 +1009,8 @@ void VRRenderer::RenderEntity(Entity* entity) {
 			vec4 light_pos_type = vec4(l->position, (int)l->type);
 			vec4 light_color_range = vec4(l->color * l->intensity, l->range);
 
-			shader->set_uniform("lightPosType[" + to_string(i) + "]", light_pos_type);
-			shader->set_uniform("lightColorRange[" + to_string(i) + "]", light_color_range);
+			scene_shader->set_uniform("lightPosType[" + to_string(i) + "]", light_pos_type);
+			scene_shader->set_uniform("lightColorRange[" + to_string(i) + "]", light_color_range);
 
 		}
 	}
@@ -1382,32 +1029,31 @@ void VRRenderer::RenderEntity(Entity* entity) {
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void VRRenderer::RenderCompanionWindow()
+void VRRenderer::render_companion_window()
 {
 	glDisable(GL_DEPTH_TEST);
-	glViewport(0, 0, m_nCompanionWindowWidth, m_nCompanionWindowHeight);
+	glViewport(0, 0, companion_window_width, companion_window_height);
 
-	glBindVertexArray(m_unCompanionWindowVAO);
-	glUseProgram(m_unCompanionWindowProgramID);
+	glBindVertexArray(companion_window_vao);
+	window_shader->use();
 
 	// render left eye (first half of index array )
-	glBindTexture(GL_TEXTURE_2D, leftEyeDesc.m_nResolveTextureId);
+	glBindTexture(GL_TEXTURE_2D, left_eye_description.resolve_texture_id);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glDrawElements(GL_TRIANGLES, m_uiCompanionWindowIndexSize / 2, GL_UNSIGNED_SHORT, 0);
+	glDrawElements(GL_TRIANGLES, companion_window_index_size / 2, GL_UNSIGNED_SHORT, 0);
 
 	// render right eye (second half of index array )
-	glBindTexture(GL_TEXTURE_2D, rightEyeDesc.m_nResolveTextureId);
+	glBindTexture(GL_TEXTURE_2D, right_eye_description.resolve_texture_id);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glDrawElements(GL_TRIANGLES, m_uiCompanionWindowIndexSize / 2, GL_UNSIGNED_SHORT, (const void *)(uintptr_t)(m_uiCompanionWindowIndexSize));
+	glDrawElements(GL_TRIANGLES, companion_window_index_size / 2, GL_UNSIGNED_SHORT, (const void *)(uintptr_t)(companion_window_index_size));
 
 	glBindVertexArray(0);
-	glUseProgram(0);
 
 }
 
@@ -1415,12 +1061,12 @@ void VRRenderer::RenderCompanionWindow()
 //-----------------------------------------------------------------------------
 // Purpose: Gets a Matrix Projection Eye with respect to nEye.
 //-----------------------------------------------------------------------------
-mat4 VRRenderer::GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye)
+mat4 VRRenderer::get_hmd_projection_eye(vr::Hmd_Eye nEye)
 {
-	if (!m_pHMD)
+	if (!hmd)
 		return mat4();
 
-	vr::HmdMatrix44_t mat = m_pHMD->GetProjectionMatrix(nEye, m_fNearClip, m_fFarClip);
+	vr::HmdMatrix44_t mat = hmd->GetProjectionMatrix(nEye, near_clip, far_clip);
 
 	return mat4(
 		mat.m[0][0], mat.m[1][0], mat.m[2][0], mat.m[3][0],
@@ -1434,12 +1080,12 @@ mat4 VRRenderer::GetHMDMatrixProjectionEye(vr::Hmd_Eye nEye)
 //-----------------------------------------------------------------------------
 // Purpose: Gets an HMDMatrixPoseEye with respect to nEye.
 //-----------------------------------------------------------------------------
-mat4 VRRenderer::GetHMDMatrixPoseEye(vr::Hmd_Eye nEye)
+mat4 VRRenderer::get_hmd_pose_eye(vr::Hmd_Eye nEye)
 {
-	if (!m_pHMD)
+	if (!hmd)
 		return mat4();
 
-	vr::HmdMatrix34_t matEyeRight = m_pHMD->GetEyeToHeadTransform(nEye);
+	vr::HmdMatrix34_t matEyeRight = hmd->GetEyeToHeadTransform(nEye);
 	mat4 matrixObj(
 		matEyeRight.m[0][0], matEyeRight.m[1][0], matEyeRight.m[2][0], 0.0,
 		matEyeRight.m[0][1], matEyeRight.m[1][1], matEyeRight.m[2][1], 0.0,
@@ -1452,34 +1098,14 @@ mat4 VRRenderer::GetHMDMatrixPoseEye(vr::Hmd_Eye nEye)
 
 
 //-----------------------------------------------------------------------------
-// Purpose: Gets a Current View Projection Matrix with respect to nEye,
-//          which may be an Eye_Left or an Eye_Right.
-//-----------------------------------------------------------------------------
-mat4 VRRenderer::GetCurrentViewProjectionMatrix(vr::Hmd_Eye nEye)
-{
-	mat4 matMVP;
-	if (nEye == vr::Eye_Left)
-	{
-		matMVP = m_mat4ProjectionLeft * m_mat4eyePosLeft * m_mat4HMDPose;
-	}
-	else if (nEye == vr::Eye_Right)
-	{
-		matMVP = m_mat4ProjectionRight * m_mat4eyePosRight *  m_mat4HMDPose;
-	}
-
-	return matMVP;
-}
-
-
-//-----------------------------------------------------------------------------
 // Purpose: Finds a render model we've already loaded or loads a new one
 //-----------------------------------------------------------------------------
-VRRenderModel *VRRenderer::FindOrLoadRenderModel(const char *pchRenderModelName)
+VRRenderModel *VRRenderer::find_or_load_render_model(const char *pchRenderModelName)
 {
 	VRRenderModel *pRenderModel = NULL;
-	for (std::vector< VRRenderModel * >::iterator i = m_vecRenderModels.begin(); i != m_vecRenderModels.end(); i++)
+	for (std::vector< VRRenderModel * >::iterator i = render_models.begin(); i != render_models.end(); i++)
 	{
-		if (!stricmp((*i)->GetName().c_str(), pchRenderModelName))
+		if (!stricmp((*i)->get_name().c_str(), pchRenderModelName))
 		{
 			pRenderModel = *i;
 			break;
@@ -1524,7 +1150,7 @@ VRRenderModel *VRRenderer::FindOrLoadRenderModel(const char *pchRenderModelName)
 		}
 
 		pRenderModel = new VRRenderModel(pchRenderModelName);
-		if (!pRenderModel->BInit(*pModel, *pTexture))
+		if (!pRenderModel->initialize(*pModel, *pTexture))
 		{
 			dprintf("Unable to create GL model from render model %s\n", pchRenderModelName);
 			delete pRenderModel;
@@ -1532,7 +1158,7 @@ VRRenderModel *VRRenderer::FindOrLoadRenderModel(const char *pchRenderModelName)
 		}
 		else
 		{
-			m_vecRenderModels.push_back(pRenderModel);
+			render_models.push_back(pRenderModel);
 		}
 		vr::VRRenderModels()->FreeRenderModel(pModel);
 		vr::VRRenderModels()->FreeTexture(pTexture);
@@ -1544,23 +1170,23 @@ VRRenderModel *VRRenderer::FindOrLoadRenderModel(const char *pchRenderModelName)
 //-----------------------------------------------------------------------------
 // Purpose: Create/destroy GL a Render Model for a single tracked device
 //-----------------------------------------------------------------------------
-void VRRenderer::SetupRenderModelForTrackedDevice(vr::TrackedDeviceIndex_t unTrackedDeviceIndex)
+void VRRenderer::setup_render_model_for_tracked_device(vr::TrackedDeviceIndex_t unTrackedDeviceIndex)
 {
 	if (unTrackedDeviceIndex >= vr::k_unMaxTrackedDeviceCount)
 		return;
 
 	// try to find a model we've already set up
-	std::string sRenderModelName = GetTrackedDeviceString(m_pHMD, unTrackedDeviceIndex, vr::Prop_RenderModelName_String);
-	VRRenderModel *pRenderModel = FindOrLoadRenderModel(sRenderModelName.c_str());
+	std::string sRenderModelName = GetTrackedDeviceString(hmd, unTrackedDeviceIndex, vr::Prop_RenderModelName_String);
+	VRRenderModel *pRenderModel = find_or_load_render_model(sRenderModelName.c_str());
 	if (!pRenderModel)
 	{
-		std::string sTrackingSystemName = GetTrackedDeviceString(m_pHMD, unTrackedDeviceIndex, vr::Prop_TrackingSystemName_String);
+		std::string sTrackingSystemName = GetTrackedDeviceString(hmd, unTrackedDeviceIndex, vr::Prop_TrackingSystemName_String);
 		dprintf("Unable to load render model for tracked device %d (%s.%s)", unTrackedDeviceIndex, sTrackingSystemName.c_str(), sRenderModelName.c_str());
 	}
 	else
 	{
-		m_rTrackedDeviceToRenderModel[unTrackedDeviceIndex] = pRenderModel;
-		m_rbShowTrackedDevice[unTrackedDeviceIndex] = true;
+		tracked_device_to_render_model[unTrackedDeviceIndex] = pRenderModel;
+		show_tracked_device[unTrackedDeviceIndex] = true;
 	}
 }
 
@@ -1568,19 +1194,19 @@ void VRRenderer::SetupRenderModelForTrackedDevice(vr::TrackedDeviceIndex_t unTra
 //-----------------------------------------------------------------------------
 // Purpose: Create/destroy GL Render Models
 //-----------------------------------------------------------------------------
-void VRRenderer::SetupRenderModels()
+void VRRenderer::setup_render_models()
 {
-	memset(m_rTrackedDeviceToRenderModel, 0, sizeof(m_rTrackedDeviceToRenderModel));
+	memset(tracked_device_to_render_model, 0, sizeof(tracked_device_to_render_model));
 
-	if (!m_pHMD)
+	if (!hmd)
 		return;
 
 	for (uint32_t unTrackedDevice = vr::k_unTrackedDeviceIndex_Hmd + 1; unTrackedDevice < vr::k_unMaxTrackedDeviceCount; unTrackedDevice++)
 	{
-		if (!m_pHMD->IsTrackedDeviceConnected(unTrackedDevice))
+		if (!hmd->IsTrackedDeviceConnected(unTrackedDevice))
 			continue;
 
-		SetupRenderModelForTrackedDevice(unTrackedDevice);
+		setup_render_model_for_tracked_device(unTrackedDevice);
 	}
 
 }
@@ -1589,122 +1215,13 @@ void VRRenderer::SetupRenderModels()
 //-----------------------------------------------------------------------------
 // Purpose: Converts a SteamVR matrix to our local matrix class
 //-----------------------------------------------------------------------------
-mat4 VRRenderer::ConvertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t &matPose)
+mat4 VRRenderer::convert_HmdMatrix_to_mat4(const vr::HmdMatrix34_t &matrix)
 {
-	mat4 matrixObj(
-		matPose.m[0][0], matPose.m[1][0], matPose.m[2][0], 0.0,
-		matPose.m[0][1], matPose.m[1][1], matPose.m[2][1], 0.0,
-		matPose.m[0][2], matPose.m[1][2], matPose.m[2][2], 0.0,
-		matPose.m[0][3], matPose.m[1][3], matPose.m[2][3], 1.0f
+	mat4 mat(
+		matrix.m[0][0], matrix.m[1][0], matrix.m[2][0], 0.0,
+		matrix.m[0][1], matrix.m[1][1], matrix.m[2][1], 0.0,
+		matrix.m[0][2], matrix.m[1][2], matrix.m[2][2], 0.0,
+		matrix.m[0][3], matrix.m[1][3], matrix.m[2][3], 1.0f
 	);
-	return matrixObj;
+	return mat;
 }
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Create/destroy GL Render Models
-//-----------------------------------------------------------------------------
-VRRenderModel::VRRenderModel(const std::string & sRenderModelName)
-	: m_sModelName(sRenderModelName)
-{
-	m_glIndexBuffer = 0;
-	m_glVertArray = 0;
-	m_glVertBuffer = 0;
-	m_glTexture = 0;
-}
-
-
-VRRenderModel::~VRRenderModel()
-{
-	Cleanup();
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Allocates and populates the GL resources for a render model
-//-----------------------------------------------------------------------------
-bool VRRenderModel::BInit(const vr::RenderModel_t & vrModel, const vr::RenderModel_TextureMap_t & vrDiffuseTexture)
-{
-	// create and bind a VAO to hold state for this model
-	glGenVertexArrays(1, &m_glVertArray);
-	glBindVertexArray(m_glVertArray);
-
-	// Populate a vertex buffer
-	glGenBuffers(1, &m_glVertBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, m_glVertBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vr::RenderModel_Vertex_t) * vrModel.unVertexCount, vrModel.rVertexData, GL_STATIC_DRAW);
-
-	// Identify the components in the vertex buffer
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vr::RenderModel_Vertex_t), (void *)offsetof(vr::RenderModel_Vertex_t, vPosition));
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vr::RenderModel_Vertex_t), (void *)offsetof(vr::RenderModel_Vertex_t, vNormal));
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vr::RenderModel_Vertex_t), (void *)offsetof(vr::RenderModel_Vertex_t, rfTextureCoord));
-
-	// Create and populate the index buffer
-	glGenBuffers(1, &m_glIndexBuffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_glIndexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint16_t) * vrModel.unTriangleCount * 3, vrModel.rIndexData, GL_STATIC_DRAW);
-
-	glBindVertexArray(0);
-
-	// create and populate the texture
-	glGenTextures(1, &m_glTexture);
-	glBindTexture(GL_TEXTURE_2D, m_glTexture);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, vrDiffuseTexture.unWidth, vrDiffuseTexture.unHeight,
-		0, GL_RGBA, GL_UNSIGNED_BYTE, vrDiffuseTexture.rubTextureMapData);
-
-	// If this renders black ask McJohn what's wrong.
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-
-	GLfloat fLargest;
-	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &fLargest);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, fLargest);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	m_unVertexCount = vrModel.unTriangleCount * 3;
-
-	return true;
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Frees the GL resources for a render model
-//-----------------------------------------------------------------------------
-void VRRenderModel::Cleanup()
-{
-	if (m_glVertBuffer)
-	{
-		glDeleteBuffers(1, &m_glIndexBuffer);
-		glDeleteVertexArrays(1, &m_glVertArray);
-		glDeleteBuffers(1, &m_glVertBuffer);
-		m_glIndexBuffer = 0;
-		m_glVertArray = 0;
-		m_glVertBuffer = 0;
-	}
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Draws the render model
-//-----------------------------------------------------------------------------
-void VRRenderModel::Draw()
-{
-	glBindVertexArray(m_glVertArray);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, m_glTexture);
-
-	glDrawElements(GL_TRIANGLES, m_unVertexCount, GL_UNSIGNED_SHORT, 0);
-
-	glBindVertexArray(0);
-}
-

@@ -94,9 +94,9 @@ class Snake : public Entity{
 				input = controller - local_pos;
 
 				float length = glm::length(input);
-
+				
 				haptic_timer += dt;
-				if (length < 0.5) {
+				if (length < .25f) {
 					if (haptic_timer >= haptic_length){
 						haptic_timer = 0;
 						haptic_is_pulsing = !haptic_is_pulsing;
